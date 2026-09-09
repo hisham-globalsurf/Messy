@@ -1,0 +1,28 @@
+import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+import { connectDB } from "@/lib/db/mongoose";
+import { AdminUserModel } from "@/models/AdminUser";
+import { verifyPassword } from "@/lib/auth/password";
+import { createSessionCookie } from "@/lib/auth/session";
+import { loginSchema } from "@/lib/validation";
+
+export async function POST(request: Request): Promise<Response> {
+  try {
+    const body = loginSchema.parse(await request.json());
+    await connectDB();
+
+    const user = await AdminUserModel.findOne({ username: body.username });
+    if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
+      return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
+    }
+
+    await createSessionCookie({ sub: user._id.toString(), username: user.username });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 422 });
+    }
+    console.error(err);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+  }
+}
