@@ -69,7 +69,7 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
       toast.error("Add a supplier WhatsApp number in Settings first");
       return;
     }
-    const message = buildSupplierMessage(settings?.messName ?? "Mess", entry);
+    const message = buildSupplierMessage(entry);
     window.open(whatsAppTextUrl(phone, message), "_blank", "noopener,noreferrer");
   }
 
@@ -91,7 +91,7 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-base font-semibold tabular-nums">
+            <span className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">
               {formatMoney(entry.totalAmount, currency)}
             </span>
             {!readOnly && (
@@ -99,11 +99,11 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                  onClick={sendToSupplier}
-                  aria-label="Send meal count to supplier on WhatsApp"
+                  className="size-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirming(true)}
+                  aria-label="Delete entry"
                 >
-                  <WhatsAppIcon className="size-4" />
+                  <Trash2 className="size-4" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -117,11 +117,11 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => setConfirming(true)}
-                  aria-label="Delete entry"
+                  className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                  onClick={sendToSupplier}
+                  aria-label="Send meal count to supplier on WhatsApp"
                 >
-                  <Trash2 className="size-4" />
+                  <WhatsAppIcon className="size-4" />
                 </Button>
               </div>
             )}

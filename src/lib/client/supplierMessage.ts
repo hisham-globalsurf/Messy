@@ -1,5 +1,4 @@
 import type { MealEntry } from "@/types";
-import { formatDate } from "@/lib/format";
 
 /** Aggregate one entry's meals by food variant — each half-pair counts as one physical meal. */
 function variantCounts(entry: Pick<MealEntry, "fullEaters" | "halfPairs">): {
@@ -21,13 +20,15 @@ function variantCounts(entry: Pick<MealEntry, "fullEaters" | "halfPairs">): {
   return { total, byVariant };
 }
 
-/** Plain-text order summary for the food supplier, e.g. "Total 7, Veg 1, Non-veg 5, Egg 1". */
-export function buildSupplierMessage(
-  messName: string,
-  entry: Pick<MealEntry, "date" | "fullEaters" | "halfPairs">,
-): string {
+/**
+ * Plain-text order summary for the food supplier:
+ * Total 7
+ *
+ * Non-veg 6
+ * Egg 1
+ */
+export function buildSupplierMessage(entry: Pick<MealEntry, "fullEaters" | "halfPairs">): string {
   const { total, byVariant } = variantCounts(entry);
-  const breakdown = [...byVariant.entries()].map(([variant, count]) => `${variant} ${count}`).join(", ");
-  const header = `${messName} — ${formatDate(entry.date)}`;
-  return breakdown ? `${header}\nTotal ${total}, ${breakdown}` : `${header}\nTotal ${total}`;
+  const lines = [...byVariant.entries()].map(([variant, count]) => `${variant} ${count}`);
+  return lines.length > 0 ? `Total ${total}\n\n${lines.join("\n")}` : `Total ${total}`;
 }
