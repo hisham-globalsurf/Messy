@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { mutateApi } from "@/lib/client/fetcher";
 
 function LoginForm() {
@@ -65,6 +66,7 @@ function LoginForm() {
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Spinner />}
             {loading ? "Signing in…" : "Sign in"}
           </Button>
         </form>

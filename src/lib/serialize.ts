@@ -8,6 +8,7 @@ interface EntryLike {
   pricePerMeal: number;
   mealCount: number;
   totalAmount: number;
+  paidBy?: string[];
   settlementId?: { toString(): string } | null;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -39,6 +40,7 @@ export function serializeEntry(doc: EntryLike): MealEntry {
     pricePerMeal: doc.pricePerMeal,
     mealCount: doc.mealCount,
     totalAmount: doc.totalAmount,
+    paidBy: doc.paidBy ?? [],
     settlementId: doc.settlementId ? doc.settlementId.toString() : null,
     createdAt: new Date(doc.createdAt).toISOString(),
     updatedAt: new Date(doc.updatedAt).toISOString(),

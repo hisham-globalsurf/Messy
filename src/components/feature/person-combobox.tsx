@@ -14,6 +14,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Spinner } from "@/components/ui/spinner";
 import { usePersons } from "@/lib/client/hooks";
 import { mutateApi } from "@/lib/client/fetcher";
 import type { Person } from "@/types";
@@ -88,8 +89,8 @@ export function PersonCombobox({ onPick, exclude = [], label = "Add person", dis
                   onSelect={createAndPick}
                   disabled={creating}
                 >
-                  <UserPlus className="size-4" />
-                  Add “{trimmed}” as new person
+                  {creating ? <Spinner /> : <UserPlus className="size-4" />}
+                  {creating ? `Adding “${trimmed}”…` : `Add “${trimmed}” as new person`}
                 </CommandItem>
               </CommandGroup>
             )}

@@ -3,14 +3,12 @@
 import { useState } from "react";
 import { Plus, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AddEntrySheet } from "@/components/feature/add-entry-sheet";
 import { SettleDialog } from "@/components/feature/settle-dialog";
 import { EntryCard } from "@/components/feature/entry-card";
 import { EntryFilters, type Filters } from "@/components/feature/entry-filters";
-import { SettledBatches } from "@/components/feature/settled-batches";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/feature/states";
-import { useEntries, useSettings, useSettlements } from "@/lib/client/hooks";
+import { useEntries, useSettings } from "@/lib/client/hooks";
 import { groupByMonth } from "@/lib/group";
 import { formatMoney } from "@/lib/format";
 import type { MealEntry } from "@/types";
@@ -18,7 +16,6 @@ import type { MealEntry } from "@/types";
 const EMPTY: Filters = { from: "", to: "", person: "" };
 
 export default function DashboardPage() {
-  const [tab, setTab] = useState<"unsettled" | "settled">("unsettled");
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [sheet, setSheet] = useState<{ open: boolean; entry: MealEntry | null; key: number }>({
     open: false,
@@ -31,7 +28,7 @@ export default function DashboardPage() {
   const currency = settings?.currency ?? "₹";
 
   const query = {
-    settled: tab === "settled",
+    settled: false,
     from: filters.from || undefined,
     to: filters.to || undefined,
     person: filters.person || undefined,
@@ -39,11 +36,11 @@ export default function DashboardPage() {
   const { data: entries, error, isLoading, mutate } = useEntries(query);
   const { data: allUnsettled = [] } = useEntries({ settled: false });
   const { data: recentEntries } = useEntries({});
-  const { data: settlements = [] } = useSettlements();
 
   const prevEntry = recentEntries?.[0] ?? null;
 
   const periodTotal = (entries ?? []).reduce((t, e) => t + e.totalAmount, 0);
+  const showTotal = (entries?.length ?? 0) > 0;
 
   function openAdd() {
     setSheet((s) => ({ open: true, entry: null, key: s.key + 1 }));
@@ -55,35 +52,22 @@ export default function DashboardPage() {
     setSheet((s) => ({ ...s, open }));
   }
 
-  const showTotal = tab === "unsettled" && (entries?.length ?? 0) > 0;
-
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+    <div>
       {/* Fixed control section — the list below it scrolls underneath. */}
       <div className="sticky top-14 z-20 -mx-4 -mt-5 space-y-3 border-b bg-background/95 px-4 pb-3 pt-4 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:-mx-8 lg:-mt-8 lg:px-8">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl font-semibold lg:text-2xl">Entries</h1>
-          {tab === "unsettled" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSettleOpen(true)}
-              disabled={allUnsettled.length === 0}
-            >
-              <Wallet className="size-4" />
-              Settle up
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSettleOpen(true)}
+            disabled={allUnsettled.length === 0}
+          >
+            <Wallet className="size-4" />
+            Settle up
+          </Button>
         </div>
-
-        <TabsList className="w-full">
-          <TabsTrigger value="unsettled" className="flex-1">
-            Unsettled
-          </TabsTrigger>
-          <TabsTrigger value="settled" className="flex-1">
-            Settled
-          </TabsTrigger>
-        </TabsList>
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <EntryFilters value={filters} onChange={setFilters} />
@@ -99,39 +83,27 @@ export default function DashboardPage() {
       </div>
 
       <div className="pt-4">
-        <TabsContent value="unsettled" className="mt-0">
-          <EntryList
-            entries={entries}
-            error={error ? String(error) : null}
-            isLoading={isLoading}
-            currency={currency}
-            onEdit={openEdit}
-            onRetry={() => mutate()}
-            emptyTitle="No unsettled entries"
-            emptyHint="Add today’s meals to get started."
-            emptyAction={
-              <Button onClick={() => openAdd()}>
-                <Plus className="size-4" />
-                Add entry
-              </Button>
-            }
-          />
-        </TabsContent>
-
-        <TabsContent value="settled" className="mt-0">
-          {isLoading ? (
-            <ListSkeleton />
-          ) : error ? (
-            <ErrorState message="Could not load settled entries" onRetry={() => mutate()} />
-          ) : (
-            <SettledBatches entries={entries ?? []} settlements={settlements} currency={currency} />
-          )}
-        </TabsContent>
+        <EntryList
+          entries={entries}
+          error={error ? String(error) : null}
+          isLoading={isLoading}
+          currency={currency}
+          onEdit={openEdit}
+          onRetry={() => mutate()}
+          emptyTitle="No unsettled entries"
+          emptyHint="Add today’s meals to get started."
+          emptyAction={
+            <Button onClick={() => openAdd()}>
+              <Plus className="size-4" />
+              Add entry
+            </Button>
+          }
+        />
       </div>
 
       <button
         onClick={() => openAdd()}
-        className="fixed bottom-20 right-4 z-40 flex h-14 items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-lg sm:bottom-8"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-lg sm:bottom-8"
       >
         <Plus className="size-5" />
         Add entry
@@ -150,7 +122,7 @@ export default function DashboardPage() {
         unsettled={allUnsettled}
         currency={currency}
       />
-    </Tabs>
+    </div>
   );
 }
 

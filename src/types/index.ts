@@ -1,6 +1,7 @@
 export interface Person {
   _id: string;
   name: string;
+  phone?: string;
   createdAt: string;
 }
 
@@ -13,6 +14,8 @@ export interface MealEntry {
   pricePerMeal: number;
   mealCount: number;
   totalAmount: number;
+  /** Names who already paid their own share in cash, independent of settlementId. */
+  paidBy: string[];
   settlementId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +29,31 @@ export interface Settlement {
   totalAmount: number;
   mealEntryIds: string[];
   createdAt: string;
+}
+
+/** Settlement plus the counts shown in the settlements list. */
+export interface SettlementSummary extends Settlement {
+  entryCount: number;
+  peopleCount: number;
+  /** Already collected in cash at meal time (paidBy), independent of the bulk settlement itself. */
+  paidAmount: number;
+  /** Still to be collected — what a GPay split request should cover. */
+  dueAmount: number;
+}
+
+export interface SettlementPersonBreakdown {
+  name: string;
+  phone?: string;
+  meals: number;
+  amount: number;
+  paidAmount: number;
+  dueAmount: number;
+  dates: string[];
+}
+
+/** Per-person breakdown for a single settlement, used by the settlement detail view and share card. */
+export interface SettlementDetail extends SettlementSummary {
+  people: SettlementPersonBreakdown[];
 }
 
 export interface Settings {

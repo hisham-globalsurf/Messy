@@ -12,7 +12,14 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(6, "Use at least 6 characters"),
 });
 
-export const personCreateSchema = z.object({ name });
+const phone = z
+  .string()
+  .trim()
+  .max(20)
+  .regex(/^[0-9+\-\s()]*$/, "Invalid phone number")
+  .optional();
+
+export const personCreateSchema = z.object({ name, phone });
 
 const halfPair = z
   .tuple([name, name])
@@ -53,6 +60,15 @@ export const settlementCreateSchema = z.object({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date(),
   note: z.string().trim().max(200).optional().default(""),
+});
+
+export const settlementDeleteSchema = z.object({
+  mode: z.enum(["unsettle", "delete-entries"]),
+});
+
+export const entryPaidSchema = z.object({
+  name: z.string().trim().min(1),
+  paid: z.boolean(),
 });
 
 export const settingsUpdateSchema = z

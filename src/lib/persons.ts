@@ -24,23 +24,29 @@ export async function ensurePersons(names: string[]): Promise<string[]> {
 export async function renamePersonInEntries(oldName: string, newName: string): Promise<number> {
   if (oldName.toLowerCase() === newName.toLowerCase() && oldName === newName) return 0;
   const lc = oldName.toLowerCase();
-  const entries = await MealEntryModel.find({
-    $or: [{ fullEaters: { $regex: `^${escapeRegex(oldName)}$`, $options: "i" } }, { halfPairs: { $regex: `^${escapeRegex(oldName)}$`, $options: "i" } }],
-  });
+
+  // halfPairs is an array of 2-tuples ([[String]]). Mongo's implicit array
+  // matching only unwraps one level, so a query like `{ halfPairs: { $regex } }`
+  // (or even `"halfPairs.0"`) never reaches the inner strings and silently
+  // matches nothing — confirmed against the driver directly. Filter in
+  // application code instead, same as the `person` filter in the entries list route.
+  const all = await MealEntryModel.find();
+  const entries = all.filter(
+    (e) =>
+      e.fullEaters.some((n) => n.toLowerCase() === lc) ||
+      e.halfPairs.some((p) => p.some((n) => n.toLowerCase() === lc)),
+  );
 
   let touched = 0;
   for (const entry of entries) {
     const swap = (n: string) => (n.toLowerCase() === lc ? newName : n);
     entry.fullEaters = entry.fullEaters.map(swap);
     entry.halfPairs = entry.halfPairs.map(([a, b]) => [swap(a), swap(b)] as [string, string]);
+    entry.paidBy = entry.paidBy.map(swap);
     await entry.save();
     touched += 1;
   }
   return touched;
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** Map arbitrary-cased names in an entry to their canonical stored spelling. */

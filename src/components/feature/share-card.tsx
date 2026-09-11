@@ -2,7 +2,6 @@
 
 import { forwardRef } from "react";
 import { formatDateShort, formatMoney } from "@/lib/format";
-import type { PersonHistoryItem } from "@/types";
 
 interface Props {
   messName: string;
@@ -11,15 +10,15 @@ interface Props {
   meals: number;
   amount: number;
   currency: string;
-  items: PersonHistoryItem[];
+  dates: string[];
 }
 
 /** Off-screen styled card captured as an image for WhatsApp sharing. */
 export const ShareCard = forwardRef<HTMLDivElement, Props>(function ShareCard(
-  { messName, personName, periodLabel, meals, amount, currency, items },
+  { messName, personName, periodLabel, meals, amount, currency, dates: rawDates },
   ref,
 ) {
-  const dates = items.map((i) => formatDateShort(i.date));
+  const dates = rawDates.map((d) => formatDateShort(d));
 
   return (
     <div className="pointer-events-none fixed -left-[9999px] top-0">
@@ -46,7 +45,7 @@ export const ShareCard = forwardRef<HTMLDivElement, Props>(function ShareCard(
         {dates.length > 0 && (
           <div>
             <p className="text-xs text-neutral-400">Dates</p>
-            <p className="mt-1 text-sm leading-relaxed text-neutral-200">{dates.join(" · ")}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-neutral-200">{dates.join(" · ")}</p>
           </div>
         )}
 

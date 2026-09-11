@@ -42,7 +42,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
     <div className="rounded-xl border border-destructive/40 bg-destructive/5 py-10 text-center">
       <p className="font-medium text-destructive">{message}</p>
       {onRetry && (
-        <button className="mt-2 text-sm underline" onClick={onRetry} type="button">
+        <button className="mt-2 cursor-pointer text-sm underline" onClick={onRetry} type="button">
           Try again
         </button>
       )}

@@ -2,11 +2,12 @@
 
 import useSWR from "swr";
 import { fetcher } from "./fetcher";
-import type { MealEntry, Settings, Settlement } from "@/types";
+import type { MealEntry, Settings, SettlementDetail, SettlementSummary } from "@/types";
 
 export interface PersonOption {
   _id: string;
   name: string;
+  phone?: string;
   createdAt: string;
   uses: number;
 }
@@ -20,7 +21,11 @@ export function useSettings() {
 }
 
 export function useSettlements() {
-  return useSWR<Settlement[]>("/api/settlements", fetcher);
+  return useSWR<SettlementSummary[]>("/api/settlements", fetcher);
+}
+
+export function useSettlementDetail(id: string | null) {
+  return useSWR<SettlementDetail>(id ? `/api/settlements/${id}` : null, fetcher);
 }
 
 export interface EntryFilters {

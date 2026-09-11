@@ -21,26 +21,32 @@ export const GET = route(async (_session, request: NextRequest) => {
   const freq = new Map(usage.map((u) => [u._id, u.count]));
 
   const result = persons
-    .map((p) => ({ _id: p._id.toString(), name: p.name, createdAt: new Date(p.createdAt).toISOString(), uses: freq.get(p.name.toLowerCase()) ?? 0 }))
+    .map((p) => ({
+      _id: p._id.toString(),
+      name: p.name,
+      phone: p.phone || undefined,
+      createdAt: new Date(p.createdAt).toISOString(),
+      uses: freq.get(p.name.toLowerCase()) ?? 0,
+    }))
     .sort((a, b) => b.uses - a.uses || a.name.localeCompare(b.name));
 
   return ok(result);
 });
 
 export const POST = route(async (_session, request: Request) => {
-  const { name } = personCreateSchema.parse(await request.json());
+  const { name, phone } = personCreateSchema.parse(await request.json());
   await connectDB();
 
   const existing = await PersonModel.findOne({ name })
     .collation({ locale: "en", strength: 2 })
     .lean();
   if (existing) {
-    return ok({ _id: existing._id.toString(), name: existing.name, createdAt: new Date(existing.createdAt).toISOString() });
+    return ok({ _id: existing._id.toString(), name: existing.name, phone: existing.phone || undefined, createdAt: new Date(existing.createdAt).toISOString() });
   }
 
   try {
-    const created = await PersonModel.create({ name });
-    return ok({ _id: created._id.toString(), name: created.name, createdAt: created.createdAt.toISOString() }, 201);
+    const created = await PersonModel.create({ name, phone });
+    return ok({ _id: created._id.toString(), name: created.name, phone: created.phone || undefined, createdAt: created.createdAt.toISOString() }, 201);
   } catch {
     throw new ApiError(409, "That person already exists");
   }

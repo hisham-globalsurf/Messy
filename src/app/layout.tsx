@@ -8,6 +8,15 @@ const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Messy — Mess Tracker",
   description: "Track shared meals and settle up.",
+  applicationName: "Messy",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Messy",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
@@ -17,6 +26,7 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

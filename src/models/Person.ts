@@ -3,6 +3,7 @@ import { Schema, model, models, type Model, type InferSchemaType } from "mongoos
 const personSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true, default: "" },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

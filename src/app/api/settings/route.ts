@@ -24,8 +24,9 @@ export const PATCH = route(async (_session, request: Request) => {
   if (patch.pricePerMeal !== undefined) settings.pricePerMeal = patch.pricePerMeal;
   if (patch.messName !== undefined) settings.messName = patch.messName;
   if (patch.currency !== undefined) settings.currency = patch.currency;
-  await settings.save();
 
   if (!settings.messName) throw new ApiError(400, "Mess name cannot be empty");
+  await settings.save();
+
   return ok(serializeSettings(settings.toObject()));
 });

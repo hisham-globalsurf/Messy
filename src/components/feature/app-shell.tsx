@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, LogOut, Users, Settings as SettingsIcon, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, HandCoins, LogOut, Users, Settings as SettingsIcon, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useSettings } from "@/lib/client/hooks";
@@ -12,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Entries", icon: CalendarDays },
+  { href: "/settlements", label: "Settlements", icon: HandCoins },
   { href: "/persons", label: "People", icon: Users },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
@@ -20,8 +23,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: settings } = useSettings();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
+    setLoggingOut(true);
     try {
       await mutateApi("/api/auth/logout", "POST");
       toast.success("Signed out");
@@ -29,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.refresh();
     } catch {
       toast.error("Could not sign out");
+      setLoggingOut(false);
     }
   }
 
@@ -53,8 +59,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" aria-label="Sign out" onClick={logout}>
-              <LogOut className="size-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Sign out"
+              onClick={logout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? <Spinner /> : <LogOut className="size-4" />}
             </Button>
           </div>
         </div>
@@ -65,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur sm:hidden">
-        <div className="mx-auto flex max-w-3xl">
+        <div className="mx-auto flex max-w-3xl pb-[env(safe-area-inset-bottom)]">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}

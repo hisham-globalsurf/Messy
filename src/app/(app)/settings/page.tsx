@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { ListSkeleton } from "@/components/feature/states";
+import { Spinner } from "@/components/ui/spinner";
 import { useSettings } from "@/lib/client/hooks";
 import { mutateApi } from "@/lib/client/fetcher";
 import type { Settings } from "@/types";
@@ -100,6 +101,7 @@ function MessForm({ settings }: { settings: Settings }) {
             </div>
           </div>
           <Button type="submit" disabled={saving}>
+            {saving && <Spinner />}
             {saving ? "Saving…" : "Save changes"}
           </Button>
         </form>
@@ -180,6 +182,7 @@ function PasswordForm() {
             </div>
           </div>
           <Button type="submit" disabled={saving}>
+            {saving && <Spinner />}
             {saving ? "Updating…" : "Change password"}
           </Button>
         </form>

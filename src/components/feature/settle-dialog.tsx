@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogContent,
@@ -76,12 +77,12 @@ export function SettleDialog({ open, onOpenChange, unsettled, currency }: Props)
         </DialogHeader>
 
         <div className="space-y-4">
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={useRange}
               onChange={(e) => setUseRange(e.target.checked)}
-              className="size-4 accent-primary"
+              className="size-4 cursor-pointer accent-primary"
             />
             Limit to a start date
           </label>
@@ -139,6 +140,7 @@ export function SettleDialog({ open, onOpenChange, unsettled, currency }: Props)
             Cancel
           </Button>
           <Button onClick={confirm} disabled={saving || affected.length === 0}>
+            {saving && <Spinner />}
             {saving ? "Settling…" : `Settle ${affected.length} entr${affected.length === 1 ? "y" : "ies"}`}
           </Button>
         </DialogFooter>

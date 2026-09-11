@@ -104,7 +104,7 @@ function FilterChip({ label, onClear }: { label: string; onClear: () => void }) 
         type="button"
         onClick={onClear}
         aria-label={`Clear ${label}`}
-        className="rounded-full p-0.5 hover:bg-background/60"
+        className="cursor-pointer rounded-full p-0.5 hover:bg-background/60"
       >
         <X className="size-3" />
       </button>

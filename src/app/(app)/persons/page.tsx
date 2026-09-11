@@ -28,7 +28,7 @@ export default function PersonsPage() {
       <div className="flex flex-wrap items-center gap-2">
         <PersonCombobox label={selected ?? "Search a person"} onPick={setSelected} />
         {persons.slice(0, 8).map((p) => (
-          <button key={p._id} onClick={() => setSelected(p.name)}>
+          <button key={p._id} type="button" className="cursor-pointer" onClick={() => setSelected(p.name)}>
             <Badge variant={selected === p.name ? "default" : "secondary"}>{p.name}</Badge>
           </button>
         ))}

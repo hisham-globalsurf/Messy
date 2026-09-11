@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,7 @@ export function PersonProfile({ name }: { name: string }) {
 
   const meals = items.length;
   const amount = Number(items.reduce((t, i) => t + i.amount, 0).toFixed(2));
+  const due = Number(items.filter((i) => !i.settled).reduce((t, i) => t + i.amount, 0).toFixed(2));
 
   const periodLabel = useMemo(() => {
     if (period === "all") return "All time";
@@ -97,7 +99,7 @@ export function PersonProfile({ name }: { name: string }) {
           </SelectContent>
         </Select>
         <Button onClick={onShare} disabled={sharing || meals === 0}>
-          <Share2 className="size-4" />
+          {sharing ? <Spinner /> : <Share2 className="size-4" />}
           {sharing ? "Preparing…" : "Share"}
         </Button>
       </div>
@@ -106,7 +108,7 @@ export function PersonProfile({ name }: { name: string }) {
         <span className="text-muted-foreground">
           {periodLabel} · {meals} meal{meals === 1 ? "" : "s"}
         </span>
-        <span className="text-base font-semibold">{formatMoney(amount, currency)}</span>
+        <span className="text-base font-semibold">{formatMoney(due, currency)}</span>
       </div>
 
       {items.length === 0 ? (
@@ -140,7 +142,7 @@ export function PersonProfile({ name }: { name: string }) {
         meals={meals}
         amount={amount}
         currency={currency}
-        items={items}
+        dates={items.map((i) => i.date)}
       />
     </div>
   );

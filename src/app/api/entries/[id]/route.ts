@@ -1,3 +1,4 @@
+import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { MealEntryModel, computeDerived } from "@/models/MealEntry";
 import { entryUpdateSchema } from "@/lib/validation";
@@ -8,6 +9,7 @@ import { ApiError, ok, route } from "@/lib/api";
 
 export const PATCH = route(async (_session, request: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid id");
   const input = entryUpdateSchema.parse(await request.json());
   await connectDB();
 
@@ -32,6 +34,7 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
 
 export const DELETE = route(async (_session, _request: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
+  if (!isValidObjectId(id)) throw new ApiError(400, "Invalid id");
   await connectDB();
 
   const entry = await MealEntryModel.findById(id);

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { PersonCombobox } from "@/components/feature/person-combobox";
 import { mutateApi } from "@/lib/client/fetcher";
 import { refreshEntries } from "@/lib/client/entries";
@@ -139,7 +140,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
               <button
                 type="button"
                 onClick={clearAll}
-                className="shrink-0 font-medium underline underline-offset-2"
+                className="shrink-0 cursor-pointer font-medium underline underline-offset-2"
               >
                 Clear
               </button>
@@ -159,7 +160,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
                     <button
                       type="button"
                       onClick={() => removeFull(name)}
-                      className="rounded-full p-0.5 hover:bg-background/60"
+                      className="cursor-pointer rounded-full p-0.5 hover:bg-background/60"
                       aria-label={`Remove ${name}`}
                     >
                       <X className="size-3" />
@@ -184,7 +185,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
             {pending && (
               <p className="text-sm text-muted-foreground">
                 Pairing <span className="font-medium text-foreground">{pending}</span> with… pick one
-                more. <button className="underline" type="button" onClick={() => setPending(null)}>cancel</button>
+                more. <button className="cursor-pointer underline" type="button" onClick={() => setPending(null)}>cancel</button>
               </p>
             )}
             {halfPairs.length > 0 ? (
@@ -195,7 +196,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
                     <button
                       type="button"
                       onClick={() => removePair(idx)}
-                      className="rounded-full p-0.5 hover:bg-muted"
+                      className="cursor-pointer rounded-full p-0.5 hover:bg-muted"
                       aria-label="Remove pair"
                     >
                       <X className="size-3" />
@@ -215,7 +216,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="ml-2 underline underline-offset-2 hover:text-foreground"
+                  className="ml-2 cursor-pointer underline underline-offset-2 hover:text-foreground"
                 >
                   clear
                 </button>
@@ -227,6 +228,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
 
         <SheetFooter>
           <Button onClick={save} disabled={saving || mealCount === 0}>
+            {saving && <Spinner />}
             {saving ? "Saving…" : isEdit ? "Save changes" : "Add entry"}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>

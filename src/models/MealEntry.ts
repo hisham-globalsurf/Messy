@@ -8,6 +8,8 @@ export interface MealEntryDoc {
   pricePerMeal: number;
   mealCount: number;
   totalAmount: number;
+  /** Names (from fullEaters/halfPairs) who already paid cash for their own share — independent of settlementId. */
+  paidBy: string[];
   settlementId: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
@@ -21,6 +23,7 @@ const mealEntrySchema = new Schema<MealEntryDoc>(
     pricePerMeal: { type: Number, required: true, min: 0 },
     mealCount: { type: Number, default: 0, min: 0 },
     totalAmount: { type: Number, default: 0, min: 0 },
+    paidBy: { type: [String], default: [] },
     settlementId: { type: Schema.Types.ObjectId, ref: "Settlement", default: null },
   },
   { timestamps: true },
