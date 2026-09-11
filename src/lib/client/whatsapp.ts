@@ -9,7 +9,7 @@ function normalizePhone(phone: string): string {
 }
 
 function chatUrl(phone: string | undefined): string {
-  return phone ? `https://web.whatsapp.com/send?phone=${normalizePhone(phone)}` : "https://web.whatsapp.com/";
+  return phone ? `https://wa.me/${normalizePhone(phone)}` : "https://wa.me/";
 }
 
 /**
