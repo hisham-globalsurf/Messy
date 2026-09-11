@@ -1,10 +1,10 @@
-import type { MealEntry, Settlement, Settings } from "@/types";
+import type { FoodVariant, FullEaterEntry, HalfPairEntry, MealEntry, Settlement, Settings } from "@/types";
 
 interface EntryLike {
   _id: { toString(): string };
   date: Date | string;
-  fullEaters?: string[];
-  halfPairs?: string[][];
+  fullEaters?: FullEaterEntry[];
+  halfPairs?: HalfPairEntry[];
   pricePerMeal: number;
   mealCount: number;
   totalAmount: number;
@@ -28,6 +28,9 @@ interface SettingsLike {
   pricePerMeal: number;
   messName: string;
   currency: string;
+  foodVariants?: FoodVariant[];
+  defaultVariant?: string;
+  supplierPhone?: string;
   updatedAt: Date | string;
 }
 
@@ -36,7 +39,7 @@ export function serializeEntry(doc: EntryLike): MealEntry {
     _id: doc._id.toString(),
     date: new Date(doc.date).toISOString(),
     fullEaters: doc.fullEaters ?? [],
-    halfPairs: (doc.halfPairs ?? []).map((p) => [p[0], p[1]] as [string, string]),
+    halfPairs: (doc.halfPairs ?? []).map((p) => ({ names: [p.names[0], p.names[1]], variant: p.variant, price: p.price })),
     pricePerMeal: doc.pricePerMeal,
     mealCount: doc.mealCount,
     totalAmount: doc.totalAmount,
@@ -64,6 +67,9 @@ export function serializeSettings(doc: SettingsLike): Settings {
     pricePerMeal: doc.pricePerMeal,
     messName: doc.messName,
     currency: doc.currency,
+    foodVariants: (doc.foodVariants ?? []).map((v) => ({ name: v.name, price: v.price })),
+    defaultVariant: doc.defaultVariant || undefined,
+    supplierPhone: doc.supplierPhone || undefined,
     updatedAt: new Date(doc.updatedAt).toISOString(),
   };
 }

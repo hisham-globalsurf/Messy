@@ -4,6 +4,7 @@ const personSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     phone: { type: String, trim: true, default: "" },
+    preferredVariant: { type: String, trim: true, default: "" },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

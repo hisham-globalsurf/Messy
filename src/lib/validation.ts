@@ -19,17 +19,30 @@ const phone = z
   .regex(/^[0-9+\-\s()]*$/, "Invalid phone number")
   .optional();
 
-export const personCreateSchema = z.object({ name, phone });
+const variantName = z.string().trim().min(1).max(40);
 
-const halfPair = z
-  .tuple([name, name])
-  .refine(([a, b]) => a.toLowerCase() !== b.toLowerCase(), "A pair needs two different people");
+export const foodVariantSchema = z.object({ name: variantName, price: z.number().min(0) });
+
+export const personCreateSchema = z.object({ name, phone, preferredVariant: variantName.optional() });
+
+const fullEaterInput = z.object({
+  name,
+  variant: variantName.nullable().optional().default(null),
+  count: z.number().int().min(1).max(20).default(1),
+});
+
+const halfPairInput = z
+  .object({
+    names: z.tuple([name, name]),
+    variant: variantName.nullable().optional().default(null),
+  })
+  .refine((v) => v.names[0].toLowerCase() !== v.names[1].toLowerCase(), "A pair needs two different people");
 
 export const entryInputSchema = z
   .object({
     date: z.coerce.date(),
-    fullEaters: z.array(name).default([]),
-    halfPairs: z.array(halfPair).default([]),
+    fullEaters: z.array(fullEaterInput).default([]),
+    halfPairs: z.array(halfPairInput).default([]),
     pricePerMeal: z.number().min(0).optional(),
   })
   .refine((v) => v.fullEaters.length + v.halfPairs.length > 0, {
@@ -38,7 +51,9 @@ export const entryInputSchema = z
   })
   .refine(
     (v) => {
-      const all = [...v.fullEaters, ...v.halfPairs.flat()].map((n) => n.toLowerCase());
+      const all = [...v.fullEaters.map((e) => e.name), ...v.halfPairs.flatMap((p) => p.names)].map((n) =>
+        n.toLowerCase(),
+      );
       return new Set(all).size === all.length;
     },
     { message: "A person can only appear once per day", path: ["fullEaters"] },
@@ -66,16 +81,29 @@ export const settlementDeleteSchema = z.object({
   mode: z.enum(["unsettle", "delete-entries"]),
 });
 
-export const entryPaidSchema = z.object({
-  name: z.string().trim().min(1),
-  paid: z.boolean(),
-});
+export const entryParticipantSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    paid: z.boolean().optional(),
+    variant: variantName.nullable().optional(),
+    count: z.number().int().min(1).max(20).optional(),
+  })
+  .refine((v) => v.paid !== undefined || v.variant !== undefined || v.count !== undefined, "Nothing to update");
 
 export const settingsUpdateSchema = z
   .object({
     pricePerMeal: z.number().min(0).optional(),
     messName: z.string().trim().min(1).max(60).optional(),
     currency: z.string().trim().min(1).max(4).optional(),
+    foodVariants: z
+      .array(foodVariantSchema)
+      .refine((v) => {
+        const names = v.map((f) => f.name.toLowerCase());
+        return new Set(names).size === names.length;
+      }, "Variant names must be unique")
+      .optional(),
+    defaultVariant: variantName.nullable().optional(),
+    supplierPhone: phone,
   })
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 

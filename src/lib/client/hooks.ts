@@ -8,6 +8,7 @@ export interface PersonOption {
   _id: string;
   name: string;
   phone?: string;
+  preferredVariant?: string;
   createdAt: string;
   uses: number;
 }

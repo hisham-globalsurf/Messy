@@ -32,7 +32,7 @@ export const GET = route(async (_session, _request: Request, ctx: { params: Prom
     for (const share of entryShares(e)) {
       const key = share.name.toLowerCase();
       const bucket = byName.get(key) ?? { name: share.name, meals: 0, amount: 0, paidAmount: 0, dates: [] };
-      bucket.meals += 1;
+      bucket.meals += share.meals;
       bucket.amount += share.amount;
       if (share.paid) bucket.paidAmount += share.amount;
       bucket.dates.push(new Date(e.date).toISOString());

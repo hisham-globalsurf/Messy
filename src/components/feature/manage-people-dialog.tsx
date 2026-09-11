@@ -23,9 +23,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mutateApi } from "@/lib/client/fetcher";
 import { refreshEntries } from "@/lib/client/entries";
-import { usePersons, type PersonOption } from "@/lib/client/hooks";
+import { usePersons, useSettings, type PersonOption } from "@/lib/client/hooks";
+
+const NO_VARIANT = "__none__";
 
 interface Props {
   open: boolean;
@@ -104,13 +107,21 @@ function PersonRow({
   onRenamed?: (oldName: string, newName: string) => void;
   onDeleted?: (name: string) => void;
 }) {
+  const { data: settings } = useSettings();
+  const variants = settings?.foodVariants ?? [];
+
   const [name, setName] = useState(person.name);
   const [phone, setPhone] = useState(person.phone ?? "");
+  const [preferredVariant, setPreferredVariant] = useState(
+    person.preferredVariant ?? settings?.defaultVariant ?? NO_VARIANT,
+  );
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   const dirty =
-    (name.trim() !== person.name && name.trim().length > 0) || phone.trim() !== (person.phone ?? "");
+    (name.trim() !== person.name && name.trim().length > 0) ||
+    phone.trim() !== (person.phone ?? "") ||
+    preferredVariant !== (person.preferredVariant ?? settings?.defaultVariant ?? NO_VARIANT);
 
   async function save() {
     const next = name.trim();
@@ -119,7 +130,11 @@ function PersonRow({
       const res = await mutateApi<{ updatedEntries: number }>(
         `/api/persons/${person._id}`,
         "PATCH",
-        { name: next, phone: phone.trim() },
+        {
+          name: next,
+          phone: phone.trim(),
+          preferredVariant: preferredVariant === NO_VARIANT ? undefined : preferredVariant,
+        },
       );
       await refreshEntries();
       if (next !== person.name) onRenamed?.(person.name, next);
@@ -132,6 +147,7 @@ function PersonRow({
       toast.error(err instanceof Error ? err.message : "Could not save");
       setName(person.name);
       setPhone(person.phone ?? "");
+      setPreferredVariant(person.preferredVariant ?? settings?.defaultVariant ?? NO_VARIANT);
     } finally {
       setBusy(false);
     }
@@ -187,6 +203,25 @@ function PersonRow({
               className="h-9 pl-8"
             />
           </div>
+          {variants.length > 0 && (
+            <Select
+              value={preferredVariant}
+              onValueChange={setPreferredVariant}
+              disabled={busy}
+            >
+              <SelectTrigger size="sm" className="h-9 w-full">
+                <SelectValue placeholder="Food preference" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_VARIANT}>No food preference</SelectItem>
+                {variants.map((v) => (
+                  <SelectItem key={v.name} value={v.name}>
+                    {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="flex shrink-0 flex-col gap-1.5">

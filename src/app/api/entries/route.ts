@@ -4,6 +4,7 @@ import { MealEntryModel, computeDerived } from "@/models/MealEntry";
 import { SettingsModel } from "@/models/Settings";
 import { entryInputSchema, entryQuerySchema } from "@/lib/validation";
 import { canonicalizeEntryNames } from "@/lib/persons";
+import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foodVariants";
 import { toUtcDay } from "@/lib/format";
 import { serializeEntry } from "@/lib/serialize";
 import { ok, route } from "@/lib/api";
@@ -34,8 +35,8 @@ export const GET = route(async (_session, request: NextRequest) => {
     const lc = person.toLowerCase();
     entries = entries.filter(
       (e) =>
-        (e.fullEaters ?? []).some((n) => n.toLowerCase() === lc) ||
-        (e.halfPairs ?? []).some((p) => p.some((n) => n.toLowerCase() === lc)),
+        (e.fullEaters ?? []).some((fe) => fe.name.toLowerCase() === lc) ||
+        (e.halfPairs ?? []).some((p) => p.names.some((n) => n.toLowerCase() === lc)),
     );
   }
 
@@ -48,13 +49,16 @@ export const POST = route(async (_session, request: Request) => {
 
   const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
   const pricePerMeal = input.pricePerMeal ?? settings?.pricePerMeal ?? 0;
+  const variantPrices = variantPriceLookup(settings?.foodVariants ?? []);
 
   const canonical = await canonicalizeEntryNames(input);
-  const derived = computeDerived(canonical.fullEaters, canonical.halfPairs, pricePerMeal);
+  const fullEaters = canonical.fullEaters.map((e) => resolveFullEater(e, pricePerMeal, variantPrices));
+  const halfPairs = canonical.halfPairs.map((p) => resolveHalfPair(p, pricePerMeal, variantPrices));
+  const derived = computeDerived(fullEaters, halfPairs);
   const created = await MealEntryModel.create({
     date: toUtcDay(canonical.date),
-    fullEaters: canonical.fullEaters,
-    halfPairs: canonical.halfPairs,
+    fullEaters,
+    halfPairs,
     pricePerMeal,
     ...derived,
   });

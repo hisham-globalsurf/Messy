@@ -14,7 +14,22 @@ export const GET = route(async (_session, request: NextRequest) => {
 
   // Order by usage frequency so recent/frequent names surface first.
   const usage = await MealEntryModel.aggregate<{ _id: string; count: number }>([
-    { $project: { names: { $concatArrays: ["$fullEaters", { $reduce: { input: "$halfPairs", initialValue: [], in: { $concatArrays: ["$$value", "$$this"] } } }] } } },
+    {
+      $project: {
+        names: {
+          $concatArrays: [
+            { $map: { input: "$fullEaters", as: "fe", in: "$$fe.name" } },
+            {
+              $reduce: {
+                input: { $map: { input: "$halfPairs", as: "hp", in: "$$hp.names" } },
+                initialValue: [],
+                in: { $concatArrays: ["$$value", "$$this"] },
+              },
+            },
+          ],
+        },
+      },
+    },
     { $unwind: "$names" },
     { $group: { _id: { $toLower: "$names" }, count: { $sum: 1 } } },
   ]);
@@ -25,6 +40,7 @@ export const GET = route(async (_session, request: NextRequest) => {
       _id: p._id.toString(),
       name: p.name,
       phone: p.phone || undefined,
+      preferredVariant: p.preferredVariant || undefined,
       createdAt: new Date(p.createdAt).toISOString(),
       uses: freq.get(p.name.toLowerCase()) ?? 0,
     }))
@@ -34,19 +50,34 @@ export const GET = route(async (_session, request: NextRequest) => {
 });
 
 export const POST = route(async (_session, request: Request) => {
-  const { name, phone } = personCreateSchema.parse(await request.json());
+  const { name, phone, preferredVariant } = personCreateSchema.parse(await request.json());
   await connectDB();
 
   const existing = await PersonModel.findOne({ name })
     .collation({ locale: "en", strength: 2 })
     .lean();
   if (existing) {
-    return ok({ _id: existing._id.toString(), name: existing.name, phone: existing.phone || undefined, createdAt: new Date(existing.createdAt).toISOString() });
+    return ok({
+      _id: existing._id.toString(),
+      name: existing.name,
+      phone: existing.phone || undefined,
+      preferredVariant: existing.preferredVariant || undefined,
+      createdAt: new Date(existing.createdAt).toISOString(),
+    });
   }
 
   try {
-    const created = await PersonModel.create({ name, phone });
-    return ok({ _id: created._id.toString(), name: created.name, phone: created.phone || undefined, createdAt: created.createdAt.toISOString() }, 201);
+    const created = await PersonModel.create({ name, phone, preferredVariant });
+    return ok(
+      {
+        _id: created._id.toString(),
+        name: created.name,
+        phone: created.phone || undefined,
+        preferredVariant: created.preferredVariant || undefined,
+        createdAt: created.createdAt.toISOString(),
+      },
+      201,
+    );
   } catch {
     throw new ApiError(409, "That person already exists");
   }

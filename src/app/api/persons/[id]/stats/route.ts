@@ -22,8 +22,8 @@ export const GET = route(async (_session, _request: Request, ctx: { params: Prom
     const lc = key.toLowerCase();
     const inEntries = entries.some(
       (e) =>
-        (e.fullEaters ?? []).some((n) => n.toLowerCase() === lc) ||
-        (e.halfPairs ?? []).some((p) => p.some((n) => n.toLowerCase() === lc)),
+        (e.fullEaters ?? []).some((fe) => fe.name.toLowerCase() === lc) ||
+        (e.halfPairs ?? []).some((p) => p.names.some((n) => n.toLowerCase() === lc)),
     );
     if (inEntries) displayName = key;
   }
@@ -32,33 +32,55 @@ export const GET = route(async (_session, _request: Request, ctx: { params: Prom
   const lc = displayName.toLowerCase();
   const history: PersonHistoryItem[] = [];
   for (const e of entries) {
-    const isFull = (e.fullEaters ?? []).some((n) => n.toLowerCase() === lc);
-    const pair = (e.halfPairs ?? []).find((p) => p.some((n) => n.toLowerCase() === lc));
-    if (!isFull && !pair) continue;
+    const full = (e.fullEaters ?? []).find((fe) => fe.name.toLowerCase() === lc);
+    const pair = (e.halfPairs ?? []).find((p) => p.names.some((n) => n.toLowerCase() === lc));
+    if (!full && !pair) continue;
 
     const settled = Boolean(e.settlementId);
     const settlementId = e.settlementId ? e.settlementId.toString() : null;
     const date = new Date(e.date).toISOString();
 
-    if (isFull) {
-      history.push({ entryId: e._id.toString(), date, kind: "full", partner: null, amount: e.pricePerMeal, settled, settlementId });
+    if (full) {
+      history.push({
+        entryId: e._id.toString(),
+        date,
+        kind: "full",
+        partner: null,
+        variant: full.variant,
+        count: full.count,
+        amount: full.price * full.count,
+        settled,
+        settlementId,
+      });
     }
     if (pair) {
-      const partner = pair.find((n) => n.toLowerCase() !== lc) ?? null;
-      history.push({ entryId: e._id.toString(), date, kind: "half", partner, amount: e.pricePerMeal / 2, settled, settlementId });
+      const partner = pair.names.find((n) => n.toLowerCase() !== lc) ?? null;
+      history.push({
+        entryId: e._id.toString(),
+        date,
+        kind: "half",
+        partner,
+        variant: pair.variant,
+        count: 1,
+        amount: pair.price / 2,
+        settled,
+        settlementId,
+      });
     }
   }
 
+  const meals = (items: PersonHistoryItem[]) =>
+    items.reduce((t, i) => t + (i.kind === "full" ? i.count : 1), 0);
   const sum = (items: PersonHistoryItem[]) => Number(items.reduce((t, i) => t + i.amount, 0).toFixed(2));
   const settledItems = history.filter((i) => i.settled);
   const unsettledItems = history.filter((i) => !i.settled);
 
   const stats: PersonStats = {
     name: displayName,
-    totalMeals: history.length,
+    totalMeals: meals(history),
     totalAmount: sum(history),
-    settled: { meals: settledItems.length, amount: sum(settledItems) },
-    unsettled: { meals: unsettledItems.length, amount: sum(unsettledItems) },
+    settled: { meals: meals(settledItems), amount: sum(settledItems) },
+    unsettled: { meals: meals(unsettledItems), amount: sum(unsettledItems) },
     history: history.reverse(),
   };
   return ok(stats);

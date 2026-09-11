@@ -45,7 +45,9 @@ export function SettleDialog({ open, onOpenChange, unsettled, currency }: Props)
 
   const totalAmount = affected.reduce((t, e) => t + e.totalAmount, 0);
   const totalMeals = affected.reduce((t, e) => t + e.mealCount, 0);
-  const people = new Set(affected.flatMap((e) => [...e.fullEaters, ...e.halfPairs.flat()])).size;
+  const people = new Set(
+    affected.flatMap((e) => [...e.fullEaters.map((fe) => fe.name), ...e.halfPairs.flatMap((p) => p.names)]),
+  ).size;
 
   async function confirm() {
     setSaving(true);

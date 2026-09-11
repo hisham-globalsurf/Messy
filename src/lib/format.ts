@@ -44,6 +44,12 @@ export function monthKey(iso: string): string {
   });
 }
 
+/** Today's date in the browser's local timezone — toISOString() would use UTC and show
+ * yesterday's date for hours after local midnight but before UTC midnight (e.g. IST). */
 export function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

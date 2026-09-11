@@ -4,12 +4,17 @@ import { downloadFile, renderCardToFile } from "./share";
 
 export type WhatsAppShareResult = "shared" | "clipboard" | "downloaded";
 
-function normalizePhone(phone: string): string {
+export function normalizePhone(phone: string): string {
   return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
 
 function chatUrl(phone: string | undefined): string {
   return phone ? `https://wa.me/${normalizePhone(phone)}` : "https://wa.me/";
+}
+
+/** A wa.me link with prefilled text — opens that chat directly with the message ready to send. */
+export function whatsAppTextUrl(phone: string, text: string): string {
+  return `${chatUrl(phone)}?text=${encodeURIComponent(text)}`;
 }
 
 /**

@@ -10,7 +10,7 @@ const collation = { locale: "en", strength: 2 } as const;
 export const PATCH = route(async (_session, request: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params;
   if (!isValidObjectId(id)) throw new ApiError(400, "Invalid id");
-  const { name, phone } = personCreateSchema.parse(await request.json());
+  const { name, phone, preferredVariant } = personCreateSchema.parse(await request.json());
   await connectDB();
 
   const person = await PersonModel.findById(id);
@@ -22,10 +22,17 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
   const oldName = person.name;
   person.name = name;
   person.phone = phone ?? "";
+  person.preferredVariant = preferredVariant ?? "";
   await person.save();
 
   const updatedEntries = await renamePersonInEntries(oldName, name);
-  return ok({ _id: person._id.toString(), name: person.name, phone: person.phone || undefined, updatedEntries });
+  return ok({
+    _id: person._id.toString(),
+    name: person.name,
+    phone: person.phone || undefined,
+    preferredVariant: person.preferredVariant || undefined,
+    updatedEntries,
+  });
 });
 
 export const DELETE = route(async (_session, _request: Request, ctx: { params: Promise<{ id: string }> }) => {

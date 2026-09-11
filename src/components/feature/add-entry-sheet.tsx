@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -14,16 +14,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { PersonCombobox } from "@/components/feature/person-combobox";
 import { mutateApi } from "@/lib/client/fetcher";
 import { refreshEntries } from "@/lib/client/entries";
-import { useSettings } from "@/lib/client/hooks";
+import { usePersons, useSettings } from "@/lib/client/hooks";
 import { formatDate, formatMoney, todayInputValue } from "@/lib/format";
 import type { MealEntry } from "@/types";
 
-type Pair = [string, string];
+const NO_VARIANT = "__none__";
+
+interface FullEaterDraft {
+  name: string;
+  variant: string | null;
+  count: number;
+}
+interface PairDraft {
+  names: [string, string];
+  variant: string | null;
+}
 
 interface Props {
   open: boolean;
@@ -35,6 +45,7 @@ interface Props {
 
 export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props) {
   const { data: settings } = useSettings();
+  const { data: persons = [] } = usePersons();
   const isEdit = Boolean(entry);
   const seed = entry ?? prefillFrom ?? null;
   const carriedFrom =
@@ -45,9 +56,11 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
   // Parent remounts this component (via `key`) each time the sheet opens,
   // so initial state is derived straight from props.
   const [date, setDate] = useState(() => (entry ? entry.date.slice(0, 10) : todayInputValue()));
-  const [fullEaters, setFullEaters] = useState<string[]>(() => seed?.fullEaters ?? []);
-  const [halfPairs, setHalfPairs] = useState<Pair[]>(() =>
-    seed ? seed.halfPairs.map((p) => [...p] as Pair) : [],
+  const [fullEaters, setFullEaters] = useState<FullEaterDraft[]>(
+    () => seed?.fullEaters.map((e) => ({ name: e.name, variant: e.variant, count: e.count })) ?? [],
+  );
+  const [halfPairs, setHalfPairs] = useState<PairDraft[]>(
+    () => seed?.halfPairs.map((p) => ({ names: [...p.names] as [string, string], variant: p.variant })) ?? [],
   );
   const [pending, setPending] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -60,31 +73,44 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
 
   const price = entry?.pricePerMeal ?? settings?.pricePerMeal ?? 0;
   const currency = settings?.currency ?? "₹";
+  const variants = settings?.foodVariants ?? [];
+  const variantPrice = (name: string | null): number =>
+    name ? (variants.find((v) => v.name.toLowerCase() === name.toLowerCase())?.price ?? price) : price;
 
   const used = useMemo(
-    () => [...fullEaters, ...halfPairs.flat(), ...(pending ? [pending] : [])],
+    () => [...fullEaters.map((e) => e.name), ...halfPairs.flatMap((p) => p.names), ...(pending ? [pending] : [])],
     [fullEaters, halfPairs, pending],
   );
 
-  const mealCount = fullEaters.length + halfPairs.length;
-  const total = mealCount * price;
+  const mealCount = fullEaters.reduce((t, e) => t + e.count, 0) + halfPairs.length;
+  const total =
+    fullEaters.reduce((t, e) => t + variantPrice(e.variant) * e.count, 0) +
+    halfPairs.reduce((t, p) => t + variantPrice(p.variant), 0);
 
   function addFull(name: string) {
-    setFullEaters((prev) => [...prev, name]);
+    const person = persons.find((p) => p.name.toLowerCase() === name.toLowerCase());
+    const preferred = person?.preferredVariant ?? settings?.defaultVariant ?? null;
+    setFullEaters((prev) => [...prev, { name, variant: preferred, count: 1 }]);
   }
   function removeFull(name: string) {
-    setFullEaters((prev) => prev.filter((n) => n !== name));
+    setFullEaters((prev) => prev.filter((e) => e.name !== name));
+  }
+  function updateFull(name: string, patch: Partial<FullEaterDraft>) {
+    setFullEaters((prev) => prev.map((e) => (e.name === name ? { ...e, ...patch } : e)));
   }
   function addToPair(name: string) {
     if (!pending) {
       setPending(name);
     } else {
-      setHalfPairs((prev) => [...prev, [pending, name]]);
+      setHalfPairs((prev) => [...prev, { names: [pending, name], variant: settings?.defaultVariant ?? null }]);
       setPending(null);
     }
   }
   function removePair(idx: number) {
     setHalfPairs((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function updatePairVariant(idx: number, variant: string | null) {
+    setHalfPairs((prev) => prev.map((p, i) => (i === idx ? { ...p, variant } : p)));
   }
 
   async function save() {
@@ -93,7 +119,11 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
       return;
     }
     setSaving(true);
-    const payload = { date, fullEaters, halfPairs };
+    const payload = {
+      date,
+      fullEaters: fullEaters.map((e) => ({ name: e.name, variant: e.variant, count: e.count })),
+      halfPairs: halfPairs.map((p) => ({ names: p.names, variant: p.variant })),
+    };
     try {
       if (isEdit && entry) {
         await mutateApi(`/api/entries/${entry._id}`, "PATCH", payload);
@@ -112,16 +142,13 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="mx-auto max-h-[92vh] max-w-lg overflow-y-auto rounded-t-2xl">
+      <SheetContent side="bottom" className="mx-auto flex max-h-[92vh] max-w-lg flex-col overflow-hidden rounded-t-2xl">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Edit" : "Add"}</SheetTitle>
-          <SheetDescription>
-            {formatMoney(price, currency)} per meal
-            {isEdit ? " (locked at entry time)" : ""}
-          </SheetDescription>
+          <SheetDescription>Pick who’s eating, their food, and how many meals.</SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 px-4">
+        <div className="space-y-4 px-4">
           <div className="space-y-2">
             <Label htmlFor="entry-date">Date</Label>
             <Input
@@ -146,26 +173,65 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
               </button>
             </div>
           )}
+        </div>
 
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4">
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Full meal</Label>
               <PersonCombobox onPick={addFull} exclude={used} label="Add" />
             </div>
             {fullEaters.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {fullEaters.map((name) => (
-                  <Badge key={name} variant="secondary" className="gap-1 py-1 pl-2.5 pr-1">
-                    {name}
+              <div className="space-y-2">
+                {fullEaters.map((eater) => (
+                  <div key={eater.name} className="flex items-center gap-2 rounded-lg border px-2.5 py-2">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{eater.name}</span>
+                    <Select
+                      value={eater.variant ?? NO_VARIANT}
+                      onValueChange={(v) => updateFull(eater.name, { variant: v === NO_VARIANT ? null : v })}
+                    >
+                      <SelectTrigger size="sm" className="w-28 text-xs">
+                        <SelectValue placeholder="Food" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_VARIANT}>No preference</SelectItem>
+                        {variants.map((v) => (
+                          <SelectItem key={v.name} value={v.name}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updateFull(eater.name, { count: Math.max(1, eater.count - 1) })}
+                        disabled={eater.count <= 1}
+                        className="flex size-6 cursor-pointer items-center justify-center rounded-md border disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`Decrease meals for ${eater.name}`}
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="w-4 text-center text-xs tabular-nums">{eater.count}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateFull(eater.name, { count: Math.min(20, eater.count + 1) })}
+                        disabled={eater.count >= 20}
+                        className="flex size-6 cursor-pointer items-center justify-center rounded-md border disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`Increase meals for ${eater.name}`}
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => removeFull(name)}
-                      className="cursor-pointer rounded-full p-0.5 hover:bg-background/60"
-                      aria-label={`Remove ${name}`}
+                      onClick={() => removeFull(eater.name)}
+                      className="cursor-pointer rounded-full p-1 text-muted-foreground hover:bg-muted"
+                      aria-label={`Remove ${eater.name}`}
                     >
-                      <X className="size-3" />
+                      <X className="size-3.5" />
                     </button>
-                  </Badge>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -189,26 +255,46 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
               </p>
             )}
             {halfPairs.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {halfPairs.map((pair, idx) => (
-                  <Badge key={`${pair[0]}-${pair[1]}-${idx}`} variant="outline" className="gap-1 py-1 pl-2.5 pr-1">
-                    {pair[0]} + {pair[1]}
+                  <div key={`${pair.names[0]}-${pair.names[1]}-${idx}`} className="flex items-center gap-2 rounded-lg border px-2.5 py-2">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {pair.names[0]} + {pair.names[1]}
+                    </span>
+                    <Select
+                      value={pair.variant ?? NO_VARIANT}
+                      onValueChange={(v) => updatePairVariant(idx, v === NO_VARIANT ? null : v)}
+                    >
+                      <SelectTrigger size="sm" className="w-28 text-xs">
+                        <SelectValue placeholder="Food" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_VARIANT}>No preference</SelectItem>
+                        {variants.map((v) => (
+                          <SelectItem key={v.name} value={v.name}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <button
                       type="button"
                       onClick={() => removePair(idx)}
-                      className="cursor-pointer rounded-full p-0.5 hover:bg-muted"
-                      aria-label="Remove pair"
+                      className="cursor-pointer rounded-full p-1 text-muted-foreground hover:bg-muted"
+                      aria-label={`Remove pair of ${pair.names[0]} and ${pair.names[1]}`}
                     >
-                      <X className="size-3" />
+                      <X className="size-3.5" />
                     </button>
-                  </Badge>
+                  </div>
                 ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No pairs.</p>
             )}
           </section>
+        </div>
 
+        <div className="space-y-3 border-t px-4 pt-3">
           <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm">
             <span className="text-muted-foreground">
               {mealCount} meal{mealCount === 1 ? "" : "s"}
@@ -224,17 +310,17 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
             </span>
             <span className="text-base font-semibold">{formatMoney(total, currency)}</span>
           </div>
-        </div>
 
-        <SheetFooter>
-          <Button onClick={save} disabled={saving || mealCount === 0}>
-            {saving && <Spinner />}
-            {saving ? "Saving…" : isEdit ? "Save" : "Add"}
-          </Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-        </SheetFooter>
+          <SheetFooter className="p-0 pb-4">
+            <Button onClick={save} disabled={saving || mealCount === 0}>
+              {saving && <Spinner />}
+              {saving ? "Saving…" : isEdit ? "Save" : "Add"}
+            </Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          </SheetFooter>
+        </div>
       </SheetContent>
     </Sheet>
   );
