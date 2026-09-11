@@ -14,17 +14,23 @@ function chatUrl(phone: string | undefined): string {
 
 /**
  * Render a share card and hand it to WhatsApp.
- * Mobile (Web Share supports files): the OS share sheet opens with the image
- * already attached — the user just picks WhatsApp, then the contact.
- * Desktop (no file-capable Web Share): the image is copied to the clipboard
- * and that person's chat opens directly — the user pastes (Ctrl/Cmd+V) and sends.
- * If clipboard image writes aren't supported either, the image downloads instead.
+ *
+ * WhatsApp never lets a website both auto-select a contact and auto-attach a
+ * file — a chat link (web.whatsapp.com/send?phone=...) only accepts prefilled
+ * text, never files, so which tradeoff we take depends on whether we have a
+ * number for this person:
+ * - Known number: that person's chat opens directly (contact auto-selected).
+ *   The image is copied to the clipboard so the user just pastes and sends;
+ *   if clipboard image writes aren't supported, it downloads instead.
+ * - No number (mobile only, Web Share supports files): the OS share sheet
+ *   opens with the image already attached — the user picks WhatsApp, then
+ *   picks the contact manually there, since we don't know one.
  */
 export async function shareToWhatsApp(node: HTMLElement, filename: string, phone: string | undefined): Promise<WhatsAppShareResult> {
   const file = await renderCardToFile(node, filename);
 
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
-  if (nav.share && nav.canShare?.({ files: [file] })) {
+  if (!phone && nav.share && nav.canShare?.({ files: [file] })) {
     await nav.share({ files: [file] });
     return "shared";
   }

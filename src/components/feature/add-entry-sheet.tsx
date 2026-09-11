@@ -114,7 +114,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="mx-auto max-h-[92vh] max-w-lg overflow-y-auto rounded-t-2xl">
         <SheetHeader>
-          <SheetTitle>{isEdit ? "Edit entry" : "Add entry"}</SheetTitle>
+          <SheetTitle>{isEdit ? "Edit" : "Add"}</SheetTitle>
           <SheetDescription>
             {formatMoney(price, currency)} per meal
             {isEdit ? " (locked at entry time)" : ""}
@@ -229,7 +229,7 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
         <SheetFooter>
           <Button onClick={save} disabled={saving || mealCount === 0}>
             {saving && <Spinner />}
-            {saving ? "Saving…" : isEdit ? "Save changes" : "Add entry"}
+            {saving ? "Saving…" : isEdit ? "Save" : "Add"}
           </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel

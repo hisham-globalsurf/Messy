@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronDown, MoreVertical, Share2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, MoreVertical } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -228,7 +228,7 @@ function PersonBreakdownRow({
             aria-label={`Share ${person.name}'s breakdown on WhatsApp`}
             className={shared ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}
           >
-            {sharing ? <Spinner /> : shared ? <CheckCircle2 className="size-4" /> : <Share2 className="size-4" />}
+            {sharing ? <Spinner /> : shared ? <CheckCircle2 className="size-4" /> : <WhatsAppIcon className="size-4" />}
           </Button>
         )}
       </div>
@@ -245,6 +245,14 @@ function PersonBreakdownRow({
         />
       )}
     </li>
+  );
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 1.67a8.23 8.23 0 0 1 8.24 8.24c0 4.54-3.7 8.24-8.25 8.24a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.55 3.7-8.24 8.25-8.24M8.53 6.98c-.17 0-.45.06-.68.32-.24.25-.9.88-.9 2.15s.92 2.5 1.05 2.67c.13.17 1.8 2.89 4.45 4 .62.27 1.1.43 1.48.55.62.2 1.19.17 1.63.1.5-.07 1.53-.62 1.75-1.22.22-.6.22-1.11.15-1.22-.06-.1-.24-.17-.5-.3-.25-.13-1.53-.76-1.77-.84-.24-.1-.4-.14-.58.13-.17.25-.66.84-.81 1.02-.15.17-.3.19-.55.06-.25-.13-1.06-.39-2.02-1.25-.75-.66-1.25-1.48-1.4-1.73-.14-.25-.02-.38.11-.51.12-.12.25-.3.38-.46.12-.15.16-.25.24-.42.08-.17.04-.31-.02-.44-.06-.13-.58-1.42-.8-1.94-.2-.5-.42-.44-.58-.44Z" />
+    </svg>
   );
 }
 

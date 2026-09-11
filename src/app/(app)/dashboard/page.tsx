@@ -95,7 +95,7 @@ export default function DashboardPage() {
           emptyAction={
             <Button onClick={() => openAdd()}>
               <Plus className="size-4" />
-              Add entry
+              Add
             </Button>
           }
         />
@@ -106,7 +106,7 @@ export default function DashboardPage() {
         className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-lg sm:bottom-8"
       >
         <Plus className="size-5" />
-        Add entry
+        Add
       </button>
 
       <AddEntrySheet
