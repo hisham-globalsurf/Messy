@@ -65,7 +65,7 @@ const mealEntrySchema = new Schema<MealEntryDoc>(
   { timestamps: true },
 );
 
-mealEntrySchema.index({ date: -1 });
+mealEntrySchema.index({ date: -1 }, { unique: true });
 mealEntrySchema.index({ settlementId: 1 });
 
 export const MealEntryModel: Model<MealEntryDoc> =

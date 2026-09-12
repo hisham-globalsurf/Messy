@@ -22,7 +22,7 @@ import { refreshEntries } from "@/lib/client/entries";
 import { useSettings } from "@/lib/client/hooks";
 import { whatsAppTextUrl } from "@/lib/client/whatsapp";
 import { buildSupplierMessage } from "@/lib/client/supplierMessage";
-import { dayParts, formatDate, formatMoney } from "@/lib/format";
+import { dayParts, formatDate, formatMoney, todayInputValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { FullEaterEntry, HalfPairEntry, MealEntry } from "@/types";
 
@@ -46,6 +46,7 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [participant, setParticipant] = useState<ParticipantTarget | null>(null);
   const { day, month, weekday } = dayParts(entry.date);
+  const isToday = entry.date.slice(0, 10) === todayInputValue();
 
   const isPaid = (name: string) => entry.paidBy.some((n) => n.toLowerCase() === name.toLowerCase());
 
@@ -114,15 +115,17 @@ export function EntryCard({ entry, currency, readOnly, onEdit }: Props) {
                 >
                   <Pencil className="size-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
-                  onClick={sendToSupplier}
-                  aria-label="Send meal count to supplier on WhatsApp"
-                >
-                  <WhatsAppIcon className="size-4" />
-                </Button>
+                {isToday && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+                    onClick={sendToSupplier}
+                    aria-label="Send meal count to supplier on WhatsApp"
+                  >
+                    <WhatsAppIcon className="size-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Minus, Plus, X } from "lucide-react";
+import { CalendarIcon, Minus, Plus, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,15 +12,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { PersonCombobox } from "@/components/feature/person-combobox";
 import { mutateApi } from "@/lib/client/fetcher";
 import { refreshEntries } from "@/lib/client/entries";
-import { usePersons, useSettings } from "@/lib/client/hooks";
-import { formatDate, formatMoney, todayInputValue } from "@/lib/format";
+import { useEntries, usePersons, useSettings } from "@/lib/client/hooks";
+import { formatDate, formatMoney, parseInputDate, toInputDate, todayInputValue } from "@/lib/format";
 import type { MealEntry } from "@/types";
 
 const NO_VARIANT = "__none__";
@@ -46,6 +47,7 @@ interface Props {
 export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props) {
   const { data: settings } = useSettings();
   const { data: persons = [] } = usePersons();
+  const { data: allEntries = [] } = useEntries({});
   const isEdit = Boolean(entry);
   const seed = entry ?? prefillFrom ?? null;
   const carriedFrom =
@@ -56,6 +58,12 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
   // Parent remounts this component (via `key`) each time the sheet opens,
   // so initial state is derived straight from props.
   const [date, setDate] = useState(() => (entry ? entry.date.slice(0, 10) : todayInputValue()));
+  const [dateOpen, setDateOpen] = useState(false);
+
+  const usedDates = useMemo(
+    () => new Set(allEntries.filter((e) => e._id !== entry?._id).map((e) => e.date.slice(0, 10))),
+    [allEntries, entry],
+  );
   const [fullEaters, setFullEaters] = useState<FullEaterDraft[]>(
     () => seed?.fullEaters.map((e) => ({ name: e.name, variant: e.variant, count: e.count })) ?? [],
   );
@@ -118,6 +126,10 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
       toast.error("Add at least one eater");
       return;
     }
+    if (usedDates.has(date)) {
+      toast.error("An entry already exists for this date");
+      return;
+    }
     setSaving(true);
     const payload = {
       date,
@@ -151,12 +163,32 @@ export function AddEntrySheet({ open, onOpenChange, entry, prefillFrom }: Props)
         <div className="space-y-4 px-4">
           <div className="space-y-2">
             <Label htmlFor="entry-date">Date</Label>
-            <Input
-              id="entry-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  id="entry-date"
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start gap-2 font-normal"
+                >
+                  <CalendarIcon className="size-4 text-muted-foreground" />
+                  {formatDate(date)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={parseInputDate(date)}
+                  defaultMonth={parseInputDate(date)}
+                  disabled={(d) => usedDates.has(toInputDate(d))}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setDate(toInputDate(d));
+                    setDateOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {carriedFrom && (

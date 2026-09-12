@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
       <button
         onClick={() => openAdd()}
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-lg sm:bottom-8"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-11 cursor-pointer items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground shadow-lg sm:bottom-8"
       >
         <Plus className="size-5" />
         Add

@@ -240,7 +240,7 @@ function PersonBreakdownRow({
           personName={person.name}
           periodLabel={periodLabel}
           meals={person.meals}
-          amount={person.amount}
+          amount={person.dueAmount}
           currency={currency}
           dates={person.dates}
         />

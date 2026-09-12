@@ -44,7 +44,7 @@ export function PersonProfile({ name }: { name: string }) {
     return stats.history.filter((i) => i.settlementId === period);
   }, [stats, period]);
 
-  const meals = items.length;
+  const meals = items.reduce((t, i) => t + (i.kind === "full" ? i.count : 1), 0);
   const amount = Number(items.reduce((t, i) => t + i.amount, 0).toFixed(2));
   const due = Number(items.filter((i) => !i.settled).reduce((t, i) => t + i.amount, 0).toFixed(2));
 
@@ -79,7 +79,7 @@ export function PersonProfile({ name }: { name: string }) {
           label="Outstanding"
           value={formatMoney(stats.unsettled.amount, currency)}
           sub={`${stats.unsettled.meals} meals unsettled`}
-          highlight
+          tone={stats.unsettled.amount > 0 ? "warning" : "success"}
         />
       </div>
 
@@ -108,7 +108,7 @@ export function PersonProfile({ name }: { name: string }) {
         <span className="text-muted-foreground">
           {periodLabel} · {meals} meal{meals === 1 ? "" : "s"}
         </span>
-        <span className="text-base font-semibold">{formatMoney(due, currency)}</span>
+        <span className="text-base font-semibold">{formatMoney(period === "all" ? amount : due, currency)}</span>
       </div>
 
       {items.length === 0 ? (
@@ -152,17 +152,28 @@ function StatCard({
   label,
   value,
   sub,
-  highlight,
+  tone = "neutral",
 }: {
   label: string;
   value: string;
   sub: string;
-  highlight?: boolean;
+  tone?: "neutral" | "warning" | "success";
 }) {
+  const boxTone = {
+    neutral: "bg-card",
+    warning: "border-amber-500/30 bg-amber-500/10",
+    success: "border-emerald-500/30 bg-emerald-500/10",
+  }[tone];
+  const valueTone = {
+    neutral: "",
+    warning: "text-amber-700 dark:text-amber-400",
+    success: "text-emerald-700 dark:text-emerald-400",
+  }[tone];
+
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "bg-primary/5" : "bg-card"}`}>
+    <div className={`rounded-xl border p-4 ${boxTone}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+      <p className={`mt-1 text-lg font-semibold ${valueTone}`}>{value}</p>
       <p className="text-xs text-muted-foreground">{sub}</p>
     </div>
   );

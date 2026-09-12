@@ -7,7 +7,7 @@ import { canonicalizeEntryNames } from "@/lib/persons";
 import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foodVariants";
 import { toUtcDay } from "@/lib/format";
 import { serializeEntry } from "@/lib/serialize";
-import { ok, route } from "@/lib/api";
+import { ApiError, ok, route } from "@/lib/api";
 
 export const GET = route(async (_session, request: NextRequest) => {
   const sp = request.nextUrl.searchParams;
@@ -52,11 +52,15 @@ export const POST = route(async (_session, request: Request) => {
   const variantPrices = variantPriceLookup(settings?.foodVariants ?? []);
 
   const canonical = await canonicalizeEntryNames(input);
+  const entryDate = toUtcDay(canonical.date);
+  const existing = await MealEntryModel.findOne({ date: entryDate }).lean();
+  if (existing) throw new ApiError(409, "An entry already exists for this date");
+
   const fullEaters = canonical.fullEaters.map((e) => resolveFullEater(e, pricePerMeal, variantPrices));
   const halfPairs = canonical.halfPairs.map((p) => resolveHalfPair(p, pricePerMeal, variantPrices));
   const derived = computeDerived(fullEaters, halfPairs);
   const created = await MealEntryModel.create({
-    date: toUtcDay(canonical.date),
+    date: entryDate,
     fullEaters,
     halfPairs,
     pricePerMeal,

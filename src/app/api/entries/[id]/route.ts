@@ -19,15 +19,21 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
   if (!entry) throw new ApiError(404, "Entry not found");
   if (entry.settlementId) throw new ApiError(409, "Settled entries are read-only");
 
-  const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
   const canonical = await canonicalizeEntryNames(input);
+  const entryDate = toUtcDay(canonical.date);
+  if (entryDate.getTime() !== entry.date.getTime()) {
+    const existing = await MealEntryModel.findOne({ date: entryDate, _id: { $ne: entry._id } }).lean();
+    if (existing) throw new ApiError(409, "An entry already exists for this date");
+  }
+
+  const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
   const price = input.pricePerMeal ?? entry.pricePerMeal;
   const variantPrices = variantPriceLookup(settings?.foodVariants ?? []);
   const fullEaters = canonical.fullEaters.map((e) => resolveFullEater(e, price, variantPrices));
   const halfPairs = canonical.halfPairs.map((p) => resolveHalfPair(p, price, variantPrices));
   const derived = computeDerived(fullEaters, halfPairs);
   entry.set({
-    date: toUtcDay(canonical.date),
+    date: entryDate,
     fullEaters,
     halfPairs,
     pricePerMeal: price,
