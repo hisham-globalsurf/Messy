@@ -1,8 +1,9 @@
-import mongoose from "mongoose";
+import mongoose, { type Types } from "mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
 import { MealEntryModel, computeDerived, type FullEaterEntryDoc, type HalfPairEntryDoc } from "@/models/MealEntry";
 import { SettingsModel } from "@/models/Settings";
 import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foodVariants";
+import { sendPushToPerson } from "@/lib/push";
 import { ApiError } from "@/lib/api";
 
 /** Rewrite a person's name across any pending queue rows — cascades a Person rename,
@@ -96,6 +97,8 @@ export async function moveQueueToEntries(
   const session = await mongoose.startSession();
   try {
     let result: { entryId: string; movedCount: number } | null = null;
+    let notifyPersonIds: Types.ObjectId[] = [];
+    let messName = "Messy";
 
     await session.withTransaction(async () => {
       const rowQuery: Record<string, unknown> = { date };
@@ -105,6 +108,7 @@ export async function moveQueueToEntries(
 
       const settings = await SettingsModel.findOne({ key: "singleton" }).session(session).lean();
       if (!settings) throw new ApiError(500, "Settings not found");
+      messName = settings.messName;
 
       const existing = await MealEntryModel.findOne({ date }).session(session);
       const pricePerMeal = existing?.pricePerMeal ?? settings.pricePerMeal;
@@ -167,9 +171,22 @@ export async function moveQueueToEntries(
 
       await QueueOrderModel.deleteMany({ _id: { $in: rows.map((r) => r._id) } }, { session });
       result = { entryId, movedCount: rows.length };
+      notifyPersonIds = rows.flatMap((r) => [r.personId, ...(r.partnerPersonId ? [r.partnerPersonId] : [])]);
     });
 
     if (!result) throw new ApiError(500, "Move failed");
+
+    // Best-effort, outside the transaction — a push failure shouldn't undo the move.
+    await Promise.all(
+      notifyPersonIds.map((id) =>
+        sendPushToPerson(id.toString(), {
+          title: messName,
+          body: "Your meal is on the way…",
+          url: "/order",
+        }).catch((err) => console.error("Push send failed:", err)),
+      ),
+    );
+
     return result;
   } finally {
     await session.endSession();
