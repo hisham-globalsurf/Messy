@@ -5,6 +5,7 @@ import { fetcher } from "./fetcher";
 import type {
   FoodVariant,
   MealEntry,
+  MemberDateOrder,
   NotificationItem,
   QueueOrderItem,
   Settings,
@@ -87,8 +88,8 @@ export interface MemberLastOrderDraft {
 }
 
 export interface MemberOrders {
-  today: QueueOrderItem | null;
-  tomorrow: QueueOrderItem | null;
+  today: MemberDateOrder;
+  tomorrow: MemberDateOrder;
   todayDate: string;
   tomorrowDate: string;
   lastOrder: MemberLastOrderDraft | null;

@@ -125,6 +125,20 @@ export interface QueueOrderItem {
   updatedAt: string;
 }
 
+export interface ConfirmedOrderItem {
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerName: string | null;
+}
+
+/** A member's order status for one date: nothing yet, still-editable (queue), or already
+ * moved into a real entry by the admin (no longer self-editable). */
+export type MemberDateOrder =
+  | { status: "none" }
+  | { status: "pending"; order: QueueOrderItem }
+  | { status: "confirmed"; order: ConfirmedOrderItem };
+
 /** In-app announcement from the admin to all members. */
 export interface NotificationItem {
   _id: string;

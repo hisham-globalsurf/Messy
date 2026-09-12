@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mutate as globalMutate } from "swr";
 import { toast } from "sonner";
 import { OrderForm, type OrderDraft } from "@/components/feature/member/order-form";
+import { OrderConfirmedNotice } from "@/components/feature/member/order-confirmed-notice";
 import { CutoffPanel } from "@/components/feature/member/cutoff-panel";
 import { CountdownBadge } from "@/components/feature/member/countdown-badge";
 import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
@@ -50,9 +51,9 @@ export default function MemberOrderPage() {
   }
 
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
-  const showTomorrow = pastCutoff && (revealTomorrow || !!orders.tomorrow);
+  const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
   const activeDate = showTomorrow ? orders.tomorrowDate : orders.todayDate;
-  const activeExisting = showTomorrow ? orders.tomorrow : orders.today;
+  const activeStatus = showTomorrow ? orders.tomorrow : orders.today;
   const activeLabel = showTomorrow ? `Tomorrow — ${formatDate(orders.tomorrowDate)}` : "Today";
 
   async function submit(draft: OrderDraft) {
@@ -75,10 +76,10 @@ export default function MemberOrderPage() {
   }
 
   async function remove() {
-    if (!activeExisting) return;
+    if (activeStatus.status !== "pending") return;
     setDeleting(true);
     try {
-      await mutateApi(`/api/member/order/${activeExisting._id}`, "DELETE");
+      await mutateApi(`/api/member/order/${activeStatus.order._id}`, "DELETE");
       await globalMutate("/api/member/order");
       toast.success("Order removed");
     } catch (err) {
@@ -95,6 +96,8 @@ export default function MemberOrderPage() {
 
       {pastCutoff && !showTomorrow ? (
         <CutoffPanel showTomorrowButton onOrderTomorrow={() => setRevealTomorrow(true)} />
+      ) : activeStatus.status === "confirmed" ? (
+        <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
       ) : (
         <>
           {pastCutoff ? (
@@ -110,7 +113,7 @@ export default function MemberOrderPage() {
             key={activeDate}
             dateLabel={activeLabel}
             variants={settings.foodVariants}
-            existing={activeExisting}
+            existing={activeStatus.status === "pending" ? activeStatus.order : null}
             lastOrder={orders.lastOrder}
             cutoffTime={settings.orderCutoffTime}
             memberName={memberName}

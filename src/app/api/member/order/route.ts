@@ -5,35 +5,35 @@ import { SettingsModel } from "@/models/Settings";
 import { memberOrderSchema } from "@/lib/validation";
 import { toUtcDay } from "@/lib/format";
 import { isDateOrderable, queueAutoClearAt, todayIst, tomorrowIst } from "@/lib/cutoff";
-import { assertPeopleAvailable, findLastOrderDraft } from "@/lib/queue";
+import { assertPeopleAvailable, findConfirmedOrder, findLastOrderDraft } from "@/lib/queue";
 import { serializeQueueOrder } from "@/lib/serialize";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
+import type { MemberDateOrder } from "@/types";
 
 const collation = { locale: "en", strength: 2 } as const;
+
+async function dateOrderStatus(personId: string, personName: string, date: Date): Promise<MemberDateOrder> {
+  const confirmed = await findConfirmedOrder(personName, date);
+  if (confirmed) return { status: "confirmed", order: confirmed };
+
+  const row = await QueueOrderModel.findOne({ personId, date }).lean();
+  if (row) return { status: "pending", order: serializeQueueOrder(row) };
+
+  return { status: "none" };
+}
 
 export const GET = memberRoute(async (session) => {
   await connectDB();
   const todayDate = todayIst();
   const tomorrowDate = tomorrowIst();
 
-  const rows = await QueueOrderModel.find({
-    personId: session.sub,
-    date: { $in: [toUtcDay(todayDate), toUtcDay(tomorrowDate)] },
-  }).lean();
+  const today = await dateOrderStatus(session.sub, session.name, toUtcDay(todayDate));
+  const tomorrow = await dateOrderStatus(session.sub, session.name, toUtcDay(tomorrowDate));
+  const lastOrder =
+    today.status === "none" && tomorrow.status === "none" ? await findLastOrderDraft(session.name) : null;
 
-  const forDate = (d: string) => rows.find((r) => new Date(r.date).toISOString().slice(0, 10) === d);
-  const today = forDate(todayDate);
-  const tomorrow = forDate(tomorrowDate);
-  const lastOrder = today || tomorrow ? null : await findLastOrderDraft(session.name);
-
-  return ok({
-    today: today ? serializeQueueOrder(today) : null,
-    tomorrow: tomorrow ? serializeQueueOrder(tomorrow) : null,
-    todayDate,
-    tomorrowDate,
-    lastOrder,
-  });
+  return ok({ today, tomorrow, todayDate, tomorrowDate, lastOrder });
 });
 
 export const POST = memberRoute(async (session, request: Request) => {
@@ -50,6 +50,12 @@ export const POST = memberRoute(async (session, request: Request) => {
   }
   if (!isDateOrderable(dateStr, settings.orderCutoffTime)) {
     throw new ApiError(403, "Ordering for this date has closed");
+  }
+  if (await findConfirmedOrder(session.name, dateUtc)) {
+    throw new ApiError(
+      409,
+      "Your order has already been confirmed by the admin. Please contact them for any changes.",
+    );
   }
 
   let partnerPersonId: string | null = null;

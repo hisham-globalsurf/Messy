@@ -85,6 +85,33 @@ export async function findLastOrderDraft(personName: string): Promise<LastOrderD
   return null;
 }
 
+export interface ConfirmedOrder {
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerName: string | null;
+}
+
+/** Whether `personName` already has an admin-confirmed MealEntry for `date` — once true, the
+ * member can no longer self-edit that date; only the admin can change it. Automatically stops
+ * being true again if the admin later deletes the entry or removes them from it, since this is
+ * re-checked fresh on every request rather than being a stored flag. */
+export async function findConfirmedOrder(personName: string, date: Date): Promise<ConfirmedOrder | null> {
+  const lc = personName.toLowerCase();
+  const entry = await MealEntryModel.findOne({ date }).lean();
+  if (!entry) return null;
+
+  const full = entry.fullEaters.find((e) => e.name.toLowerCase() === lc);
+  if (full) return { kind: "full", variant: full.variant, count: full.count, partnerName: null };
+
+  const pair = entry.halfPairs.find((p) => p.names.some((n) => n.toLowerCase() === lc));
+  if (pair) {
+    const partnerName = pair.names.find((n) => n.toLowerCase() !== lc) ?? null;
+    return { kind: "half", variant: pair.variant, count: 1, partnerName };
+  }
+  return null;
+}
+
 /** Converts pending queue rows for one date into a real MealEntry, merging into any entry
  * that already exists for that date. Reuses the exact price-resolution helpers the admin's
  * own POST /api/entries route uses, so pricing logic isn't duplicated. Runs in a transaction
@@ -181,7 +208,7 @@ export async function moveQueueToEntries(
       notifyPersonIds.map((id) =>
         sendPushToPerson(id.toString(), {
           title: messName,
-          body: "Your meal is on the way…",
+          body: "Your meal is confirmed and it’s on the way!",
           url: "/order",
         }).catch((err) => console.error("Push send failed:", err)),
       ),

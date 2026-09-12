@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { isIos, isStandalone } from "@/lib/pwa";
 
 const DEFAULT_MESSAGE =
-  "For a better experience and to get order reminders, add this app to your Home Screen.";
+  "For a better experience and to receive order reminders, add this app to your Home Screen and enable notifications.";
+
 const IOS_MESSAGE =
-  'For a better experience and to get order reminders, tap Share, then "Add to Home Screen".';
+  'For a better experience and to receive order reminders, tap Share, then "Add to Home Screen," and enable notifications.';
 
 /** Pure-CSS infinite ticker nudging members to install the PWA (required for push on iOS). */
 export function MarqueeBanner() {
