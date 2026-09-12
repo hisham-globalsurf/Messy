@@ -1,4 +1,13 @@
-import type { FoodVariant, FullEaterEntry, HalfPairEntry, MealEntry, Settlement, Settings } from "@/types";
+import type {
+  FoodVariant,
+  FullEaterEntry,
+  HalfPairEntry,
+  MealEntry,
+  NotificationItem,
+  QueueOrderItem,
+  Settlement,
+  Settings,
+} from "@/types";
 
 interface EntryLike {
   _id: { toString(): string };
@@ -31,7 +40,32 @@ interface SettingsLike {
   foodVariants?: FoodVariant[];
   defaultVariant?: string;
   supplierPhone?: string;
+  orderCutoffTime: string;
+  orderReminderMinutes: number;
+  messClosedFrom?: Date | string | null;
+  messClosedTo?: Date | string | null;
+  messClosedMessage?: string;
   updatedAt: Date | string;
+}
+
+interface QueueOrderLike {
+  _id: { toString(): string };
+  personId: { toString(): string };
+  personName: string;
+  date: Date | string;
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerPersonId?: { toString(): string } | null;
+  partnerName: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+interface NotificationLike {
+  _id: { toString(): string };
+  message: string;
+  createdAt: Date | string;
 }
 
 export function serializeEntry(doc: EntryLike): MealEntry {
@@ -70,6 +104,35 @@ export function serializeSettings(doc: SettingsLike): Settings {
     foodVariants: (doc.foodVariants ?? []).map((v) => ({ name: v.name, price: v.price })),
     defaultVariant: doc.defaultVariant || undefined,
     supplierPhone: doc.supplierPhone || undefined,
+    orderCutoffTime: doc.orderCutoffTime,
+    orderReminderMinutes: doc.orderReminderMinutes,
+    messClosedFrom: doc.messClosedFrom ? new Date(doc.messClosedFrom).toISOString().slice(0, 10) : null,
+    messClosedTo: doc.messClosedTo ? new Date(doc.messClosedTo).toISOString().slice(0, 10) : null,
+    messClosedMessage: doc.messClosedMessage ?? "",
     updatedAt: new Date(doc.updatedAt).toISOString(),
+  };
+}
+
+export function serializeQueueOrder(doc: QueueOrderLike): QueueOrderItem {
+  return {
+    _id: doc._id.toString(),
+    personId: doc.personId.toString(),
+    personName: doc.personName,
+    date: new Date(doc.date).toISOString(),
+    kind: doc.kind,
+    variant: doc.variant,
+    count: doc.count,
+    partnerPersonId: doc.partnerPersonId ? doc.partnerPersonId.toString() : null,
+    partnerName: doc.partnerName,
+    createdAt: new Date(doc.createdAt).toISOString(),
+    updatedAt: new Date(doc.updatedAt).toISOString(),
+  };
+}
+
+export function serializeNotification(doc: NotificationLike): NotificationItem {
+  return {
+    _id: doc._id.toString(),
+    message: doc.message,
+    createdAt: new Date(doc.createdAt).toISOString(),
   };
 }

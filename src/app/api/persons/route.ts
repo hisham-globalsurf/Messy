@@ -41,6 +41,7 @@ export const GET = route(async (_session, request: NextRequest) => {
       name: p.name,
       phone: p.phone || undefined,
       preferredVariant: p.preferredVariant || undefined,
+      blocked: p.blocked ?? false,
       createdAt: new Date(p.createdAt).toISOString(),
       uses: freq.get(p.name.toLowerCase()) ?? 0,
     }))

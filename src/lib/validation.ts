@@ -104,8 +104,43 @@ export const settingsUpdateSchema = z
       .optional(),
     defaultVariant: variantName.nullable().optional(),
     supplierPhone: phone,
+    orderCutoffTime: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 10:25")
+      .optional(),
+    orderReminderMinutes: z.number().int().min(1).max(300).optional(),
+    messClosedFrom: z.coerce.date().nullable().optional(),
+    messClosedTo: z.coerce.date().nullable().optional(),
+    messClosedMessage: z.string().trim().max(300).optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, "Nothing to update");
+  .refine((v) => Object.keys(v).length > 0, "Nothing to update")
+  .refine(
+    (v) => !(v.messClosedFrom && v.messClosedTo) || v.messClosedFrom <= v.messClosedTo,
+    { message: "Closure end date must be on or after the start date", path: ["messClosedTo"] },
+  );
+
+export const memberLoginSchema = z.object({
+  phone: z.string().trim().min(1, "Enter a phone number"),
+});
+
+export const memberOrderSchema = z
+  .object({
+    date: z.coerce.date(),
+    kind: z.enum(["full", "half"]),
+    variant: variantName.nullable().optional().default(null),
+    count: z.number().int().min(1).max(20).optional().default(1),
+    partnerName: name.optional(),
+  })
+  .refine((v) => v.kind !== "half" || !!v.partnerName?.trim(), {
+    message: "Pick a partner for a half meal",
+    path: ["partnerName"],
+  });
+
+export const notificationCreateSchema = z.object({
+  message: z.string().trim().min(1, "Message is required").max(500),
+});
 
 export type EntryInput = z.infer<typeof entryInputSchema>;
 export type SettlementCreateInput = z.infer<typeof settlementCreateSchema>;
+export type MemberOrderInput = z.infer<typeof memberOrderSchema>;

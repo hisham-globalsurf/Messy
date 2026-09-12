@@ -2,13 +2,22 @@
 
 import useSWR from "swr";
 import { fetcher } from "./fetcher";
-import type { MealEntry, Settings, SettlementDetail, SettlementSummary } from "@/types";
+import type {
+  FoodVariant,
+  MealEntry,
+  NotificationItem,
+  QueueOrderItem,
+  Settings,
+  SettlementDetail,
+  SettlementSummary,
+} from "@/types";
 
 export interface PersonOption {
   _id: string;
   name: string;
   phone?: string;
   preferredVariant?: string;
+  blocked?: boolean;
   createdAt: string;
   uses: number;
 }
@@ -48,4 +57,58 @@ export function entriesKey(filters: EntryFilters): string {
 
 export function useEntries(filters: EntryFilters) {
   return useSWR<MealEntry[]>(entriesKey(filters), fetcher);
+}
+
+/** Admin's live queue view — polls so newly-submitted member orders show up without a manual refresh. */
+export function useQueue() {
+  return useSWR<QueueOrderItem[]>("/api/queue", fetcher, { refreshInterval: 5000 });
+}
+
+export interface MemberSettings {
+  messName: string;
+  currency: string;
+  foodVariants: FoodVariant[];
+  orderCutoffTime: string;
+  orderReminderMinutes: number;
+  messClosedFrom: string | null;
+  messClosedTo: string | null;
+  messClosedMessage: string;
+}
+
+export function useMemberSettings() {
+  return useSWR<MemberSettings>("/api/member/settings", fetcher);
+}
+
+export interface MemberLastOrderDraft {
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerName: string | null;
+}
+
+export interface MemberOrders {
+  today: QueueOrderItem | null;
+  tomorrow: QueueOrderItem | null;
+  todayDate: string;
+  tomorrowDate: string;
+  lastOrder: MemberLastOrderDraft | null;
+}
+
+export function useMemberOrders() {
+  return useSWR<MemberOrders>("/api/member/order", fetcher);
+}
+
+export interface MemberPersonOption {
+  _id: string;
+  name: string;
+}
+
+export function useMemberPersons() {
+  return useSWR<MemberPersonOption[]>("/api/member/persons", fetcher);
+}
+
+export function useLatestNotification() {
+  return useSWR<NotificationItem | null>("/api/member/notifications/latest", fetcher, {
+    refreshInterval: 30000,
+  });
 }

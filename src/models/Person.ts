@@ -5,6 +5,8 @@ const personSchema = new Schema(
     name: { type: String, required: true, trim: true },
     phone: { type: String, trim: true, default: "" },
     preferredVariant: { type: String, trim: true, default: "" },
+    /** Blocked members can't log in or place orders — existing entries/history are unaffected. */
+    blocked: { type: Boolean, default: false },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

@@ -4,7 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, HandCoins, LogOut, Users, Settings as SettingsIcon, UtensilsCrossed } from "lucide-react";
+import {
+  CalendarDays,
+  HandCoins,
+  ListOrdered,
+  LogOut,
+  Users,
+  Settings as SettingsIcon,
+  UtensilsCrossed,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
@@ -14,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Entries", icon: CalendarDays },
+  { href: "/queue", label: "Queue", icon: ListOrdered },
   { href: "/settlements", label: "Settlements", icon: HandCoins },
   { href: "/persons", label: "People", icon: Users },
   { href: "/settings", label: "Settings", icon: SettingsIcon },

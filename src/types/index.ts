@@ -4,6 +4,8 @@ export interface Person {
   phone?: string;
   /** Default food variant name for this person — carried into new entries, editable per day. */
   preferredVariant?: string;
+  /** Blocked members can't log in or place orders — existing entries/history are unaffected. */
+  blocked?: boolean;
   createdAt: string;
 }
 
@@ -87,12 +89,47 @@ export interface Settings {
   defaultVariant?: string;
   /** WhatsApp number for the daily meal-count message to the food supplier. */
   supplierPhone?: string;
+  /** Daily cutoff ("HH:mm", IST) after which members can no longer submit/edit/delete today's order. */
+  orderCutoffTime: string;
+  /** Show the member ordering-page countdown only once this many minutes remain before cutoff. */
+  orderReminderMinutes: number;
+  /** Mess-closed period ("YYYY-MM-DD", inclusive both ends) — null when no closure is set. */
+  messClosedFrom: string | null;
+  messClosedTo: string | null;
+  messClosedMessage: string;
   updatedAt: string;
 }
 
 export interface SessionUser {
   sub: string;
   username: string;
+}
+
+export interface MemberSessionUser {
+  sub: string; // Person._id
+  name: string;
+}
+
+/** A member's pending meal order in the live admin queue. */
+export interface QueueOrderItem {
+  _id: string;
+  personId: string;
+  personName: string;
+  date: string; // ISO date (midnight UTC)
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerPersonId: string | null;
+  partnerName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** In-app announcement from the admin to all members. */
+export interface NotificationItem {
+  _id: string;
+  message: string;
+  createdAt: string;
 }
 
 /** Per-person breakdown used by the person dashboard and share card. */

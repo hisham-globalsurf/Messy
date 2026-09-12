@@ -9,11 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { ListSkeleton } from "@/components/feature/states";
 import { Spinner } from "@/components/ui/spinner";
 import { useSettings } from "@/lib/client/hooks";
 import { mutateApi } from "@/lib/client/fetcher";
+import { isMessClosedOn } from "@/lib/messClosure";
+import { todayIst } from "@/lib/cutoff";
 import type { FoodVariant, Settings } from "@/types";
 
 export default function SettingsPage() {
@@ -29,6 +32,8 @@ export default function SettingsPage() {
           <MessForm key={settings.updatedAt} settings={settings} />
           <FoodVariantsForm key={`variants-${settings.updatedAt}`} settings={settings} />
           <SupplierForm key={`supplier-${settings.updatedAt}`} settings={settings} />
+          <CutoffTimeForm key={`cutoff-${settings.updatedAt}`} settings={settings} />
+          <MessClosureForm key={`closure-${settings.updatedAt}`} settings={settings} />
         </>
       )}
       <PasswordForm />
@@ -255,6 +260,177 @@ function SupplierForm({ settings }: { settings: Settings }) {
             {saving && <Spinner />}
             {saving ? "Saving…" : "Save changes"}
           </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CutoffTimeForm({ settings }: { settings: Settings }) {
+  const [cutoff, setCutoff] = useState(settings.orderCutoffTime);
+  const [reminderMinutes, setReminderMinutes] = useState(String(settings.orderReminderMinutes));
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await mutateApi("/api/settings", "PATCH", {
+        orderCutoffTime: cutoff,
+        orderReminderMinutes: Number(reminderMinutes),
+      });
+      await globalMutate("/api/settings");
+      toast.success("Member ordering settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Member ordering</CardTitle>
+        <CardDescription>Daily cutoff after which members can no longer submit, edit, or delete today&apos;s order.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={save} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="order-cutoff">Cutoff time (IST)</Label>
+            <Input
+              id="order-cutoff"
+              type="time"
+              value={cutoff}
+              onChange={(e) => setCutoff(e.target.value)}
+              required
+              className="w-40"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="order-reminder">Show countdown when this many minutes remain</Label>
+            <Input
+              id="order-reminder"
+              type="number"
+              min={1}
+              max={300}
+              value={reminderMinutes}
+              onChange={(e) => setReminderMinutes(e.target.value)}
+              required
+              className="w-24"
+            />
+          </div>
+          <Button type="submit" disabled={saving}>
+            {saving && <Spinner />}
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MessClosureForm({ settings }: { settings: Settings }) {
+  const [from, setFrom] = useState(settings.messClosedFrom ?? "");
+  const [to, setTo] = useState(settings.messClosedTo ?? "");
+  const [message, setMessage] = useState(settings.messClosedMessage ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const isActive = isMessClosedOn(todayIst(), settings.messClosedFrom, settings.messClosedTo);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (from && to && from > to) {
+      toast.error("End date must be on or after the start date");
+      return;
+    }
+    setSaving(true);
+    try {
+      await mutateApi("/api/settings", "PATCH", {
+        messClosedFrom: from || null,
+        messClosedTo: to || null,
+        messClosedMessage: message.trim(),
+      });
+      await globalMutate("/api/settings");
+      toast.success("Mess availability saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function clear(e: React.MouseEvent) {
+    e.preventDefault();
+    setFrom("");
+    setTo("");
+    setMessage("");
+    setSaving(true);
+    try {
+      await mutateApi("/api/settings", "PATCH", {
+        messClosedFrom: null,
+        messClosedTo: null,
+        messClosedMessage: "",
+      });
+      await globalMutate("/api/settings");
+      toast.success("Cleared");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not clear");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>Mess availability</CardTitle>
+          {isActive && (
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+              Currently closed
+            </span>
+          )}
+        </div>
+        <CardDescription>
+          Set a date range when the mess is unavailable — members see this message instead of the ordering form.
+          Clears itself automatically once the end date passes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={save} className="space-y-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="closed-from">From</Label>
+              <Input id="closed-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="closed-to">To</Label>
+              <Input id="closed-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="closed-message">Message shown to members</Label>
+            <Textarea
+              id="closed-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="e.g. Closed for the festival holidays"
+              maxLength={300}
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={saving}>
+              {saving && <Spinner />}
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+            {(settings.messClosedFrom || settings.messClosedTo || settings.messClosedMessage) && (
+              <Button type="button" variant="ghost" onClick={clear} disabled={saving}>
+                Clear
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

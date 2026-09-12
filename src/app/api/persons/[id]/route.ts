@@ -2,6 +2,7 @@ import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { PersonModel } from "@/models/Person";
 import { renamePersonInEntries } from "@/lib/persons";
+import { renamePersonInQueue } from "@/lib/queue";
 import { personCreateSchema } from "@/lib/validation";
 import { ApiError, ok, route } from "@/lib/api";
 
@@ -26,6 +27,7 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
   await person.save();
 
   const updatedEntries = await renamePersonInEntries(oldName, name);
+  await renamePersonInQueue(oldName, name);
   return ok({
     _id: person._id.toString(),
     name: person.name,

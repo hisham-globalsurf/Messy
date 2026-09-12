@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth/jwt";
 
-const PUBLIC_API = ["/api/auth/login"];
+const PUBLIC_API = [
+  "/api/auth/login",
+  // Member-facing routes authenticate via their own separate session cookie
+  // (see src/lib/memberApi.ts), not the admin cookie this proxy checks.
+  "/api/member",
+];
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;

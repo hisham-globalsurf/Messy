@@ -63,3 +63,11 @@ export function parseInputDate(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
+
+/** "HH:mm" (24h) -> "h:mm AM/PM", e.g. "10:25" -> "10:25 AM". */
+export function formatTime12h(hhmm: string): string {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const twelveHour = hours % 12 === 0 ? 12 : hours % 12;
+  return `${twelveHour}:${String(minutes).padStart(2, "0")} ${period}`;
+}

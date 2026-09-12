@@ -27,6 +27,11 @@ export const PATCH = route(async (_session, request: Request) => {
   if (patch.foodVariants !== undefined) settings.set("foodVariants", patch.foodVariants);
   if (patch.defaultVariant !== undefined) settings.defaultVariant = patch.defaultVariant ?? "";
   if (patch.supplierPhone !== undefined) settings.supplierPhone = patch.supplierPhone;
+  if (patch.orderCutoffTime !== undefined) settings.orderCutoffTime = patch.orderCutoffTime;
+  if (patch.orderReminderMinutes !== undefined) settings.orderReminderMinutes = patch.orderReminderMinutes;
+  if (patch.messClosedFrom !== undefined) settings.messClosedFrom = patch.messClosedFrom;
+  if (patch.messClosedTo !== undefined) settings.messClosedTo = patch.messClosedTo;
+  if (patch.messClosedMessage !== undefined) settings.messClosedMessage = patch.messClosedMessage;
 
   if (!settings.messName) throw new ApiError(400, "Mess name cannot be empty");
   await settings.save();
