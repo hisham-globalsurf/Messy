@@ -68,6 +68,7 @@ export function useQueue() {
 export interface MemberSettings {
   messName: string;
   currency: string;
+  pricePerMeal: number;
   foodVariants: FoodVariant[];
   orderCutoffTime: string;
   orderReminderMinutes: number;

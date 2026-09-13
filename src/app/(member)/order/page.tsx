@@ -13,10 +13,11 @@ import { MessClosedNotice } from "@/components/feature/member/mess-closed-notice
 import { useMemberName } from "@/components/feature/member/member-session-context";
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
-import { useMemberOrders, useMemberSettings } from "@/lib/client/hooks";
+import { useMemberOrders, useMemberSettings, type MemberOrders } from "@/lib/client/hooks";
 import { isPastCutoffToday } from "@/lib/cutoff";
 import { isMessClosedOn } from "@/lib/messClosure";
 import { formatDate } from "@/lib/format";
+import type { QueueOrderItem } from "@/types";
 
 export default function MemberOrderPage() {
   const memberName = useMemberName();
@@ -52,20 +53,28 @@ export default function MemberOrderPage() {
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
   const activeDate = showTomorrow ? orders.tomorrowDate : orders.todayDate;
+  const activeKey = showTomorrow ? "tomorrow" : "today";
   const activeStatus = showTomorrow ? orders.tomorrow : orders.today;
   const activeLabel = showTomorrow ? `Tomorrow — ${formatDate(orders.tomorrowDate)}` : "Today";
 
   async function submit(draft: OrderDraft) {
     setSaving(true);
     try {
-      await mutateApi("/api/member/order", "POST", {
+      // The POST response is the freshly-saved document itself — write it straight into the
+      // SWR cache instead of paying for a second round-trip just to re-fetch what we already
+      // know, so the UI updates the instant the save actually completes.
+      const updated = await mutateApi<QueueOrderItem>("/api/member/order", "POST", {
         date: activeDate,
         kind: draft.kind,
         variant: draft.variant,
         count: draft.count,
         partnerName: draft.partnerName ?? undefined,
       });
-      await globalMutate("/api/member/order");
+      await globalMutate<MemberOrders>(
+        "/api/member/order",
+        (current) => (current ? { ...current, [activeKey]: { status: "pending", order: updated } } : current),
+        { revalidate: false },
+      );
       toast.success("Order saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save order");
@@ -79,7 +88,11 @@ export default function MemberOrderPage() {
     setDeleting(true);
     try {
       await mutateApi(`/api/member/order/${activeStatus.order._id}`, "DELETE");
-      await globalMutate("/api/member/order");
+      await globalMutate<MemberOrders>(
+        "/api/member/order",
+        (current) => (current ? { ...current, [activeKey]: { status: "none" } } : current),
+        { revalidate: false },
+      );
       toast.success("Order removed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove order");
@@ -111,6 +124,8 @@ export default function MemberOrderPage() {
             key={activeDate}
             dateLabel={activeLabel}
             variants={settings.foodVariants}
+            pricePerMeal={settings.pricePerMeal}
+            currency={settings.currency}
             existing={activeStatus.status === "pending" ? activeStatus.order : null}
             lastOrder={orders.lastOrder}
             cutoffTime={settings.orderCutoffTime}

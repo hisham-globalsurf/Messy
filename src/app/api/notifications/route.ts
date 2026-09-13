@@ -35,3 +35,11 @@ export const POST = route(async (_session, request: Request) => {
 
   return ok({ id: notificationId, delivered }, 201);
 });
+
+/** Manual bulk-clear — separate from (and doesn't touch) the 2-day TTL index, which keeps
+ * auto-expiring old notifications on its own regardless of whether this is ever used. */
+export const DELETE = route(async () => {
+  await connectDB();
+  const result = await NotificationModel.deleteMany({});
+  return ok({ deletedCount: result.deletedCount });
+});

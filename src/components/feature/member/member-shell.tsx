@@ -44,14 +44,16 @@ export function MemberShell({ name, children }: { name: string; children: React.
               <p className="truncate text-sm font-semibold leading-tight">{settings?.messName ?? "Messy"}</p>
               <p className="truncate text-xs leading-tight text-muted-foreground">{name}</p>
             </div>
-            <Button variant="ghost" size="icon" aria-label="View current period" onClick={() => setHistoryOpen(true)}>
-              <CalendarDays className="size-4" />
-            </Button>
-            <NotificationBell />
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" aria-label="Sign out" onClick={logout} disabled={loggingOut}>
-              {loggingOut ? <Spinner /> : <LogOut className="size-4" />}
-            </Button>
+            <div className="flex items-center gap-0.5">
+              <Button variant="ghost" size="icon" aria-label="View current period" onClick={() => setHistoryOpen(true)}>
+                <CalendarDays className="size-4" />
+              </Button>
+              <NotificationBell />
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" aria-label="Sign out" onClick={logout} disabled={loggingOut}>
+                {loggingOut ? <Spinner /> : <LogOut className="size-4" />}
+              </Button>
+            </div>
           </div>
         </header>
 

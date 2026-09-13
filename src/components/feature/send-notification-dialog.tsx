@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Bell, Smartphone } from "lucide-react";
+import { Bell, Smartphone, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { mutateApi } from "@/lib/client/fetcher";
 
@@ -28,6 +38,8 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
   const [inApp, setInApp] = useState(false);
   const [push, setPush] = useState(false);
   const [sending, setSending] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   async function send() {
     setSending(true);
@@ -46,6 +58,23 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
       toast.error(err instanceof Error ? err.message : "Could not send notification");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function clearAll() {
+    setClearing(true);
+    try {
+      const result = await mutateApi<{ deletedCount: number }>("/api/notifications", "DELETE");
+      toast.success(
+        result.deletedCount > 0
+          ? `Cleared ${result.deletedCount} notification${result.deletedCount === 1 ? "" : "s"}`
+          : "Nothing to clear",
+      );
+      setConfirmingClear(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not clear notifications");
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -80,13 +109,42 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
             <Switch id="notify-push" checked={push} onCheckedChange={setPush} />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-muted-foreground hover:text-destructive"
+            onClick={() => setConfirmingClear(true)}
+          >
+            <Trash2 className="size-4" />
+            Clear all
+          </Button>
           <Button onClick={send} disabled={sending || !message.trim() || (!inApp && !push)}>
             {sending && <Spinner />}
             {sending ? "Sending…" : "Send to all members"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmingClear} onOpenChange={setConfirmingClear}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes every in-app notification for all members right now. They&apos;ll still
+              auto-expire after 2 days on their own — this just clears them immediately. This can&apos;t be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={clearAll} disabled={clearing}>
+              {clearing && <Spinner />}
+              {clearing ? "Clearing…" : "Clear all"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

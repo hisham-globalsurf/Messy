@@ -12,6 +12,7 @@ export const GET = memberRoute(async () => {
   return ok({
     messName: settings.messName,
     currency: settings.currency,
+    pricePerMeal: settings.pricePerMeal,
     foodVariants: settings.foodVariants ?? [],
     orderCutoffTime: settings.orderCutoffTime,
     orderReminderMinutes: settings.orderReminderMinutes,

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { MemberPartnerPicker } from "@/components/feature/member/member-partner-picker";
-import { formatTime12h } from "@/lib/format";
+import { formatMoney, formatTime12h } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { FoodVariant, QueueOrderItem } from "@/types";
 
@@ -27,6 +27,8 @@ interface LastOrderDraft {
 interface Props {
   dateLabel: string;
   variants: FoodVariant[];
+  pricePerMeal: number;
+  currency: string;
   existing: QueueOrderItem | null;
   /** Member's most recent past order — prefilled only when there's no existing order for
    * this date yet, so they don't have to re-pick the same thing every day. */
@@ -42,6 +44,8 @@ interface Props {
 export function OrderForm({
   dateLabel,
   variants,
+  pricePerMeal,
+  currency,
   existing,
   lastOrder,
   cutoffTime,
@@ -58,6 +62,8 @@ export function OrderForm({
   const [partnerName, setPartnerName] = useState<string | null>(seed?.partnerName ?? null);
 
   const canSubmit = kind === "full" || !!partnerName;
+  const unitPrice = variant ? (variants.find((v) => v.name === variant)?.price ?? pricePerMeal) : pricePerMeal;
+  const estimate = kind === "full" ? unitPrice * count : unitPrice / 2;
 
   async function submit() {
     await onSubmit({ kind, variant, count, partnerName });
@@ -82,15 +88,19 @@ export function OrderForm({
               <button
                 key={v.name}
                 type="button"
+                aria-pressed={variant === v.name}
                 onClick={() => setVariant(v.name)}
                 className={cn(
-                  "cursor-pointer rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   variant === v.name
                     ? "border-primary bg-primary text-primary-foreground"
                     : "hover:bg-muted",
                 )}
               >
                 {v.name}
+                <span className={cn("text-xs", variant === v.name ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  {formatMoney(v.price, currency)}
+                </span>
               </button>
             ))}
           </div>
@@ -102,6 +112,7 @@ export function OrderForm({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
+            aria-pressed={kind === "full"}
             onClick={() => setKind("full")}
             className={cn(
               "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
@@ -112,6 +123,7 @@ export function OrderForm({
           </button>
           <button
             type="button"
+            aria-pressed={kind === "half"}
             onClick={() => setKind("half")}
             className={cn(
               "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
@@ -154,6 +166,11 @@ export function OrderForm({
           <MemberPartnerPicker value={partnerName} onChange={setPartnerName} excludeName={memberName} />
         </div>
       )}
+
+      <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+        <span className="text-xs text-muted-foreground">Estimated cost</span>
+        <span className="text-sm font-semibold tabular-nums">{formatMoney(estimate, currency)}</span>
+      </div>
 
       <div className="flex gap-2 pt-1">
         <Button className="flex-1" onClick={submit} disabled={!canSubmit || saving || deleting}>
