@@ -11,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <SWRConfig value={{ revalidateOnFocus: false, shouldRetryOnError: false }}>
         {children}
       </SWRConfig>
-      <Toaster position="bottom-right" duration={1500} richColors />
+      <Toaster position="bottom-right" duration={2000} richColors />
       <PwaRegister />
     </ThemeProvider>
   );

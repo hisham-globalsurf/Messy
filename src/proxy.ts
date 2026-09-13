@@ -4,8 +4,10 @@ import { SESSION_COOKIE, verifySession } from "@/lib/auth/jwt";
 const PUBLIC_API = [
   "/api/auth/login",
   // Member-facing routes authenticate via their own separate session cookie
-  // (see src/lib/memberApi.ts), not the admin cookie this proxy checks.
-  "/api/member",
+  // (see src/lib/memberApi.ts), not the admin cookie this proxy checks. Trailing
+  // slash matters: without it, a future route like /api/members-export would
+  // accidentally match this prefix and skip the admin-session check.
+  "/api/member/",
 ];
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Phone, Search, Trash2, Users } from "lucide-react";
+import { Check, Phone, Plus, Search, Trash2, Users, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +34,7 @@ interface Props {
 export function ManagePeopleList({ onRenamed, onDeleted }: Props) {
   const { data: persons = [] } = usePersons();
   const [query, setQuery] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -41,28 +42,32 @@ export function ManagePeopleList({ onRenamed, onDeleted }: Props) {
     return persons.filter((p) => p.name.toLowerCase().includes(q) || (p.phone ?? "").toLowerCase().includes(q));
   }, [persons, query]);
 
-  if (persons.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-        <Users className="size-8 text-muted-foreground/50" />
-        No people yet.
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or number…"
-          className="h-9 pl-8"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or number…"
+            className="h-9 pl-8"
+          />
+        </div>
+        <Button size="sm" variant={adding ? "secondary" : "outline"} onClick={() => setAdding((v) => !v)} className="gap-1.5">
+          {adding ? <X className="size-4" /> : <Plus className="size-4" />}
+          {adding ? "Cancel" : "Add"}
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {adding && <AddPersonForm onAdded={() => setAdding(false)} />}
+
+      {persons.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+          <Users className="size-8 text-muted-foreground/50" />
+          No people yet.
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">No one matches &ldquo;{query}&rdquo;.</p>
       ) : (
         <ul className="space-y-2">
@@ -71,6 +76,81 @@ export function ManagePeopleList({ onRenamed, onDeleted }: Props) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function AddPersonForm({ onAdded }: { onAdded: () => void }) {
+  const { data: settings } = useSettings();
+  const variants = settings?.foodVariants ?? [];
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [preferredVariant, setPreferredVariant] = useState(settings?.defaultVariant ?? NO_VARIANT);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast.error("Name is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await mutateApi("/api/persons", "POST", {
+        name: trimmed,
+        phone: phone.trim(),
+        preferredVariant: preferredVariant === NO_VARIANT ? undefined : preferredVariant,
+      });
+      await globalMutate("/api/persons");
+      toast.success(`Added ${trimmed}`);
+      onAdded();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add person");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-primary/40 bg-card p-2.5">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && save()}
+        placeholder="Name"
+        className="h-9"
+        autoFocus
+      />
+      <div className="relative">
+        <Phone className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="WhatsApp number"
+          className="h-9 pl-8"
+        />
+      </div>
+      {variants.length > 0 && (
+        <Select value={preferredVariant} onValueChange={setPreferredVariant}>
+          <SelectTrigger size="sm" className="h-9 w-full">
+            <SelectValue placeholder="Food preference" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_VARIANT}>No food preference</SelectItem>
+            {variants.map((v) => (
+              <SelectItem key={v.name} value={v.name}>
+                {v.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <Button size="sm" className="w-full" onClick={save} disabled={saving || !name.trim()}>
+        {saving && <Spinner />}
+        {saving ? "Adding…" : "Add person"}
+      </Button>
     </div>
   );
 }

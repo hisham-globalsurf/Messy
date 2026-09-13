@@ -1,3 +1,4 @@
+import "server-only";
 import mongoose, { type Types } from "mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
 import { MealEntryModel, computeDerived, type FullEaterEntryDoc, type HalfPairEntryDoc } from "@/models/MealEntry";
@@ -11,9 +12,12 @@ import { ApiError } from "@/lib/api";
 export async function renamePersonInQueue(oldName: string, newName: string): Promise<number> {
   if (oldName.toLowerCase() === newName.toLowerCase() && oldName === newName) return 0;
   const lc = oldName.toLowerCase();
-  const rows = await QueueOrderModel.find({
-    $or: [{ personName: new RegExp(`^${lc}$`, "i") }, { partnerName: new RegExp(`^${lc}$`, "i") }],
-  });
+  // Filter in application code rather than a Mongo $regex built from the name — a name
+  // containing regex metacharacters (e.g. "A.J") would otherwise match unintended rows.
+  const all = await QueueOrderModel.find();
+  const rows = all.filter(
+    (r) => r.personName.toLowerCase() === lc || r.partnerName?.toLowerCase() === lc,
+  );
 
   let touched = 0;
   for (const row of rows) {
