@@ -9,6 +9,7 @@ import {
   HandCoins,
   ListOrdered,
   LogOut,
+  Megaphone,
   Users,
   Settings as SettingsIcon,
   UtensilsCrossed,
@@ -16,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
+import { SendNotificationDialog } from "@/components/feature/send-notification-dialog";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useSettings } from "@/lib/client/hooks";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { data: settings } = useSettings();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
   async function logout() {
     setLoggingOut(true);
@@ -67,6 +70,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
+            <Button variant="ghost" size="icon" aria-label="Notify members" onClick={() => setNotifyOpen(true)}>
+              <Megaphone className="size-4" />
+            </Button>
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -84,6 +90,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-28 pt-5 sm:px-6 sm:pb-14 lg:max-w-4xl lg:px-8 lg:pt-8 2xl:max-w-5xl">
         {children}
       </main>
+
+      <SendNotificationDialog open={notifyOpen} onOpenChange={setNotifyOpen} />
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur sm:hidden">
         <div className="mx-auto flex max-w-3xl pb-[env(safe-area-inset-bottom)]">

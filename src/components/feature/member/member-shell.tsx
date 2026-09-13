@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LogOut, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, LogOut, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { MemberNameProvider } from "@/components/feature/member/member-session-context";
+import { HistorySheet } from "@/components/feature/member/history-sheet";
+import { NotificationBell } from "@/components/feature/member/notification-bell";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberSettings } from "@/lib/client/hooks";
 
@@ -15,6 +17,7 @@ export function MemberShell({ name, children }: { name: string; children: React.
   const router = useRouter();
   const { data: settings } = useMemberSettings();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   async function logout() {
     setLoggingOut(true);
@@ -41,6 +44,10 @@ export function MemberShell({ name, children }: { name: string; children: React.
               <p className="truncate text-sm font-semibold leading-tight">{settings?.messName ?? "Messy"}</p>
               <p className="truncate text-xs leading-tight text-muted-foreground">{name}</p>
             </div>
+            <Button variant="ghost" size="icon" aria-label="View current period" onClick={() => setHistoryOpen(true)}>
+              <CalendarDays className="size-4" />
+            </Button>
+            <NotificationBell />
             <ThemeToggle />
             <Button variant="ghost" size="icon" aria-label="Sign out" onClick={logout} disabled={loggingOut}>
               {loggingOut ? <Spinner /> : <LogOut className="size-4" />}
@@ -49,6 +56,8 @@ export function MemberShell({ name, children }: { name: string; children: React.
         </header>
 
         <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-10 pt-5">{children}</main>
+
+        <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} currency={settings?.currency ?? "₹"} />
       </div>
     </MemberNameProvider>
   );

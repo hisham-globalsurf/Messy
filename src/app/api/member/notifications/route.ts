@@ -4,8 +4,9 @@ import { serializeNotification } from "@/lib/serialize";
 import { ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 
+/** Newest first. Naturally bounded by the model's 2-day TTL, so a plain limit is enough. */
 export const GET = memberRoute(async () => {
   await connectDB();
-  const latest = await NotificationModel.findOne().sort({ createdAt: -1 }).lean();
-  return ok(latest ? serializeNotification(latest) : null);
+  const notifications = await NotificationModel.find().sort({ createdAt: -1 }).limit(50).lean();
+  return ok(notifications.map((n) => serializeNotification(n)));
 });

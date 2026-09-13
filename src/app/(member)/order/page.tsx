@@ -8,7 +8,6 @@ import { OrderConfirmedNotice } from "@/components/feature/member/order-confirme
 import { CutoffPanel } from "@/components/feature/member/cutoff-panel";
 import { CountdownBadge } from "@/components/feature/member/countdown-badge";
 import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
-import { NotificationBanner } from "@/components/feature/member/notification-banner";
 import { PushSubscribeButton } from "@/components/feature/member/push-subscribe-button";
 import { MessClosedNotice } from "@/components/feature/member/mess-closed-notice";
 import { useMemberName } from "@/components/feature/member/member-session-context";
@@ -92,7 +91,6 @@ export default function MemberOrderPage() {
   return (
     <div className="space-y-4">
       <MarqueeBanner />
-      <NotificationBanner />
 
       {pastCutoff && !showTomorrow ? (
         <CutoffPanel showTomorrowButton onOrderTomorrow={() => setRevealTomorrow(true)} />

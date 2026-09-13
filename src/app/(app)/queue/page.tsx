@@ -1,7 +1,6 @@
 "use client";
 
 import { QueueList } from "@/components/feature/queue-list";
-import { SendNotificationDialog } from "@/components/feature/send-notification-dialog";
 import { EmptyState, ErrorState, ListSkeleton } from "@/components/feature/states";
 import { useQueue } from "@/lib/client/hooks";
 
@@ -10,10 +9,7 @@ export default function QueuePage() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold lg:text-2xl">Queue</h1>
-        <SendNotificationDialog />
-      </div>
+      <h1 className="text-xl font-semibold lg:text-2xl">Queue</h1>
 
       {isLoading ? (
         <ListSkeleton />

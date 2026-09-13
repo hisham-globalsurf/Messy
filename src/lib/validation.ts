@@ -137,9 +137,13 @@ export const memberOrderSchema = z
     path: ["partnerName"],
   });
 
-export const notificationCreateSchema = z.object({
-  message: z.string().trim().min(1, "Message is required").max(500),
-});
+export const notificationCreateSchema = z
+  .object({
+    message: z.string().trim().min(1, "Message is required").max(500),
+    push: z.boolean(),
+    inApp: z.boolean(),
+  })
+  .refine((v) => v.push || v.inApp, { message: "Pick at least one delivery method", path: ["push"] });
 
 export type EntryInput = z.infer<typeof entryInputSchema>;
 export type SettlementCreateInput = z.infer<typeof settlementCreateSchema>;

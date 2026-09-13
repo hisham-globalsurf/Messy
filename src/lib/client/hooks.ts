@@ -113,8 +113,23 @@ export function useMemberPersons() {
   return useSWR<MemberPersonOption[]>("/api/member/persons", fetcher);
 }
 
-export function useLatestNotification() {
-  return useSWR<NotificationItem | null>("/api/member/notifications/latest", fetcher, {
+export function useNotifications() {
+  return useSWR<NotificationItem[]>("/api/member/notifications", fetcher, {
     refreshInterval: 30000,
+    ...REVALIDATE_ON_RETURN,
   });
+}
+
+export interface MemberHistoryDay {
+  date: string;
+  amount: number;
+}
+
+export interface MemberHistory {
+  days: MemberHistoryDay[];
+  totalDue: number;
+}
+
+export function useMemberHistory(open: boolean) {
+  return useSWR<MemberHistory>(open ? "/api/member/history" : null, fetcher);
 }
