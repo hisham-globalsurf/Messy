@@ -42,7 +42,13 @@ async function sendToSubscriptions(
         sent += 1;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) toPrune.push(sub._id);
+        if (status === 404 || status === 410) {
+          toPrune.push(sub._id);
+        } else {
+          // Anything else (bad VAPID config, network error, malformed payload) was
+          // previously swallowed here with zero visibility — log it instead.
+          console.error(`Push send failed for subscription ${sub._id.toString()}:`, status, err);
+        }
       }
     }),
   );

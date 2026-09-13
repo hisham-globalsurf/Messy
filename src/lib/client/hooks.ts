@@ -76,8 +76,13 @@ export interface MemberSettings {
   messClosedMessage: string;
 }
 
+// Member-facing hooks opt back into revalidate-on-focus (off globally, see Providers) —
+// a member who switches tabs or backgrounds the app and comes back should immediately see
+// whether the admin moved/deleted their order, changed the cutoff, etc., not stale state.
+const REVALIDATE_ON_RETURN = { revalidateOnFocus: true, revalidateOnReconnect: true };
+
 export function useMemberSettings() {
-  return useSWR<MemberSettings>("/api/member/settings", fetcher);
+  return useSWR<MemberSettings>("/api/member/settings", fetcher, REVALIDATE_ON_RETURN);
 }
 
 export interface MemberLastOrderDraft {
@@ -96,7 +101,7 @@ export interface MemberOrders {
 }
 
 export function useMemberOrders() {
-  return useSWR<MemberOrders>("/api/member/order", fetcher);
+  return useSWR<MemberOrders>("/api/member/order", fetcher, REVALIDATE_ON_RETURN);
 }
 
 export interface MemberPersonOption {
