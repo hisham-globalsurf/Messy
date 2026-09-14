@@ -5,6 +5,7 @@ import { MealEntryModel, computeDerived, type FullEaterEntryDoc, type HalfPairEn
 import { SettingsModel } from "@/models/Settings";
 import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foodVariants";
 import { sendPushToPerson } from "@/lib/push";
+import { publishOrderUpdate } from "@/lib/ably";
 import { ApiError } from "@/lib/api";
 
 /** Rewrite a person's name across any pending queue rows — cascades a Person rename,
@@ -207,15 +208,18 @@ export async function moveQueueToEntries(
 
     if (!result) throw new ApiError(500, "Move failed");
 
-    // Best-effort, outside the transaction — a push failure shouldn't undo the move.
+    // Best-effort, outside the transaction — neither notification path should undo the move.
+    // Ably covers a member's already-open tab instantly; push covers the case where they've
+    // closed it (Ably needs a live connection, so it can't reach a closed tab on its own).
     await Promise.all(
-      notifyPersonIds.map((id) =>
+      notifyPersonIds.flatMap((id) => [
+        publishOrderUpdate(id.toString()),
         sendPushToPerson(id.toString(), {
           title: messName,
           body: "Your meal is confirmed and it’s on the way!",
           url: "/order",
         }).catch((err) => console.error("Push send failed:", err)),
-      ),
+      ]),
     );
 
     return result;

@@ -142,6 +142,8 @@ export const notificationCreateSchema = z
     message: z.string().trim().min(1, "Message is required").max(500),
     push: z.boolean(),
     inApp: z.boolean(),
+    /** Empty (the default) means every member. */
+    personIds: z.array(z.string()).optional().default([]),
   })
   .refine((v) => v.push || v.inApp, { message: "Pick at least one delivery method", path: ["push"] });
 

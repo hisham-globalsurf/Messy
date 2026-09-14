@@ -2,15 +2,33 @@
 
 import { createContext, useContext } from "react";
 
-const MemberNameContext = createContext<string | null>(null);
+interface MemberSession {
+  name: string;
+  personId: string;
+}
 
-export function MemberNameProvider({ name, children }: { name: string; children: React.ReactNode }) {
-  return <MemberNameContext.Provider value={name}>{children}</MemberNameContext.Provider>;
+const MemberSessionContext = createContext<MemberSession | null>(null);
+
+export function MemberSessionProvider({
+  name,
+  personId,
+  children,
+}: MemberSession & { children: React.ReactNode }) {
+  return <MemberSessionContext.Provider value={{ name, personId }}>{children}</MemberSessionContext.Provider>;
+}
+
+function useMemberSession(): MemberSession {
+  const session = useContext(MemberSessionContext);
+  if (session === null) throw new Error("useMemberSession() must be used within MemberShell");
+  return session;
 }
 
 /** The logged-in member's own name, set once by MemberShell from the server session. */
 export function useMemberName(): string {
-  const name = useContext(MemberNameContext);
-  if (name === null) throw new Error("useMemberName() must be used within MemberShell");
-  return name;
+  return useMemberSession().name;
+}
+
+/** The logged-in member's own Person id, set once by MemberShell from the server session. */
+export function useMemberPersonId(): string {
+  return useMemberSession().personId;
 }

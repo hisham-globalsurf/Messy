@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { PersonMultiSelect } from "@/components/feature/person-multi-select";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
   const [message, setMessage] = useState("");
   const [inApp, setInApp] = useState(false);
   const [push, setPush] = useState(false);
+  const [recipientIds, setRecipientIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -48,11 +50,13 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
         message,
         inApp,
         push,
+        personIds: recipientIds,
       });
       toast.success(
         push ? `Sent — ${result.delivered} device${result.delivered === 1 ? "" : "s"} notified` : "Sent",
       );
       setMessage("");
+      setRecipientIds([]);
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not send notification");
@@ -108,6 +112,10 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
             </Label>
             <Switch id="notify-push" checked={push} onCheckedChange={setPush} />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-sm font-normal text-muted-foreground">Recipients</Label>
+            <PersonMultiSelect selectedIds={recipientIds} onChange={setRecipientIds} />
+          </div>
         </div>
         <DialogFooter className="sm:justify-between">
           <Button
@@ -121,7 +129,11 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
           </Button>
           <Button onClick={send} disabled={sending || !message.trim() || (!inApp && !push)}>
             {sending && <Spinner />}
-            {sending ? "Sending…" : "Send to all members"}
+            {sending
+              ? "Sending…"
+              : recipientIds.length > 0
+                ? `Send to ${recipientIds.length} member${recipientIds.length === 1 ? "" : "s"}`
+                : "Send to all members"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -21,5 +21,9 @@ export default async function MemberLayout({ children }: LayoutProps<"/">) {
   const person = await PersonModel.findById(session.sub).lean();
   if (!person || person.blocked) return <BlockedScreen />;
 
-  return <MemberShell name={session.name}>{children}</MemberShell>;
+  return (
+    <MemberShell name={session.name} personId={session.sub}>
+      {children}
+    </MemberShell>
+  );
 }

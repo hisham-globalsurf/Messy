@@ -114,11 +114,11 @@ export function useMemberPersons() {
   return useSWR<MemberPersonOption[]>("/api/member/persons", fetcher);
 }
 
+// No refreshInterval — Ably (see useMemberRealtime) pushes a revalidate the moment the admin
+// changes something, so the 30s poll this used to run is no longer needed. REVALIDATE_ON_RETURN
+// stays as the fallback if Ably is unreachable when the member switches back to the tab.
 export function useNotifications() {
-  return useSWR<NotificationItem[]>("/api/member/notifications", fetcher, {
-    refreshInterval: 30000,
-    ...REVALIDATE_ON_RETURN,
-  });
+  return useSWR<NotificationItem[]>("/api/member/notifications", fetcher, REVALIDATE_ON_RETURN);
 }
 
 export interface MemberHistoryDay {
