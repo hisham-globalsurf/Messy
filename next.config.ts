@@ -21,6 +21,7 @@ const cspHeader = `
   form-action 'self';
   frame-ancestors 'none';
   upgrade-insecure-requests;
+  connect-src 'self' https://rest.ably.io https://realtime.ably.io wss://realtime.ably.io https://*.ably-realtime.com wss://*.ably-realtime.com;
 `
   .replace(/\s{2,}/g, " ")
   .trim();
