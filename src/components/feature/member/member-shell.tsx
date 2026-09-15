@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { MemberSessionProvider } from "@/components/feature/member/member-session-context";
 import { HistorySheet } from "@/components/feature/member/history-sheet";
 import { NotificationBell } from "@/components/feature/member/notification-bell";
+import { ReportIssueButton } from "@/components/feature/member/report-issue-button";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberSettings } from "@/lib/client/hooks";
 import { useMemberRealtime } from "@/lib/client/useMemberRealtime";
@@ -74,6 +75,7 @@ export function MemberShell({
         <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-10 pt-5">{children}</main>
 
         <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} currency={settings?.currency ?? "₹"} />
+        <ReportIssueButton />
       </div>
     </MemberSessionProvider>
   );

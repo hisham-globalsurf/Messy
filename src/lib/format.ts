@@ -19,6 +19,17 @@ export function formatDate(iso: string): string {
   });
 }
 
+/** Local date + time for an actual instant (e.g. when something was submitted) — unlike
+ * formatDate/formatDateShort, which render a calendar day and deliberately stay in UTC. */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit",

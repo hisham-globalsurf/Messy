@@ -137,6 +137,10 @@ export const memberOrderSchema = z
     path: ["partnerName"],
   });
 
+export const reportCreateSchema = z.object({
+  message: z.string().trim().min(1, "Tell us what's wrong").max(1000),
+});
+
 export const notificationCreateSchema = z
   .object({
     message: z.string().trim().min(1, "Message is required").max(500),

@@ -8,6 +8,7 @@ import type {
   MemberDateOrder,
   NotificationItem,
   QueueOrderItem,
+  ReportItem,
   Settings,
   SettlementDetail,
   SettlementSummary,
@@ -29,6 +30,10 @@ export function usePersons() {
 
 export function useSettings() {
   return useSWR<Settings>("/api/settings", fetcher);
+}
+
+export function useReports() {
+  return useSWR<ReportItem[]>("/api/reports", fetcher);
 }
 
 export function useSettlements() {

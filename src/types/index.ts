@@ -156,6 +156,14 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+/** An issue a member reported to the admin, shown on the admin's Reports tab. */
+export interface ReportItem {
+  _id: string;
+  personName: string;
+  message: string;
+  createdAt: string;
+}
+
 /** Per-person breakdown used by the person dashboard and share card. */
 export interface PersonStats {
   name: string;

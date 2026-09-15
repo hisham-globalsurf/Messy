@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
+import { ReportsList } from "@/components/feature/reports-list";
 import { ListSkeleton } from "@/components/feature/states";
 import { Spinner } from "@/components/ui/spinner";
 import { useSettings } from "@/lib/client/hooks";
@@ -25,29 +27,46 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4 lg:space-y-6">
       <h1 className="text-xl font-semibold lg:text-2xl">Settings</h1>
-      {isLoading || !settings ? (
-        <ListSkeleton rows={3} />
-      ) : (
-        <>
-          <MessForm key={settings.updatedAt} settings={settings} />
-          <FoodVariantsForm key={`variants-${settings.updatedAt}`} settings={settings} />
-          <SupplierForm key={`supplier-${settings.updatedAt}`} settings={settings} />
-          <CutoffTimeForm key={`cutoff-${settings.updatedAt}`} settings={settings} />
-          <MessClosureForm key={`closure-${settings.updatedAt}`} settings={settings} />
-        </>
-      )}
-      <PasswordForm />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Theme applies to this device.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <span className="text-sm">Light / Dark / System</span>
-          <ThemeToggle />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="general">
+        <TabsList>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="mess">Mess</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-4 pt-4 lg:space-y-6">
+          <PasswordForm />
+          <Card>
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>Theme applies to this device.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <span className="text-sm">Light / Dark / System</span>
+              <ThemeToggle />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mess" className="space-y-4 pt-4 lg:space-y-6">
+          {isLoading || !settings ? (
+            <ListSkeleton rows={3} />
+          ) : (
+            <>
+              <MessForm key={settings.updatedAt} settings={settings} />
+              <FoodVariantsForm key={`variants-${settings.updatedAt}`} settings={settings} />
+              <SupplierForm key={`supplier-${settings.updatedAt}`} settings={settings} />
+              <CutoffTimeForm key={`cutoff-${settings.updatedAt}`} settings={settings} />
+              <MessClosureForm key={`closure-${settings.updatedAt}`} settings={settings} />
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="reports" className="pt-4">
+          <ReportsList />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

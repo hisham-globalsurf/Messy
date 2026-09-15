@@ -5,6 +5,7 @@ import type {
   MealEntry,
   NotificationItem,
   QueueOrderItem,
+  ReportItem,
   Settlement,
   Settings,
 } from "@/types";
@@ -132,6 +133,22 @@ export function serializeQueueOrder(doc: QueueOrderLike): QueueOrderItem {
 export function serializeNotification(doc: NotificationLike): NotificationItem {
   return {
     _id: doc._id.toString(),
+    message: doc.message,
+    createdAt: new Date(doc.createdAt).toISOString(),
+  };
+}
+
+interface ReportLike {
+  _id: { toString(): string };
+  personName: string;
+  message: string;
+  createdAt: Date | string;
+}
+
+export function serializeReport(doc: ReportLike): ReportItem {
+  return {
+    _id: doc._id.toString(),
+    personName: doc.personName,
     message: doc.message,
     createdAt: new Date(doc.createdAt).toISOString(),
   };
