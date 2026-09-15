@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
 import { SettingsModel } from "@/models/Settings";
 import { isDateOrderable } from "@/lib/cutoff";
+import { publishOrderUpdate } from "@/lib/ably";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 
@@ -23,7 +24,10 @@ export const DELETE = memberRoute(
       throw new ApiError(403, "Ordering for this date has closed");
     }
 
+    const partnerId = row.partnerPersonId?.toString() ?? null;
     await row.deleteOne();
+    // Deleting a half order un-pairs the partner live, same as pairing them notified on submit.
+    if (partnerId) await publishOrderUpdate(partnerId);
     return ok({ ok: true });
   },
 );

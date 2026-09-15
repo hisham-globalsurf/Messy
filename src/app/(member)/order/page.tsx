@@ -5,6 +5,7 @@ import { mutate as globalMutate } from "swr";
 import { toast } from "sonner";
 import { OrderForm, type OrderDraft } from "@/components/feature/member/order-form";
 import { OrderConfirmedNotice } from "@/components/feature/member/order-confirmed-notice";
+import { PairedNotice } from "@/components/feature/member/paired-notice";
 import { CutoffPanel } from "@/components/feature/member/cutoff-panel";
 import { CountdownBadge } from "@/components/feature/member/countdown-badge";
 import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
@@ -109,6 +110,12 @@ export default function MemberOrderPage() {
         <CutoffPanel showTomorrowButton onOrderTomorrow={() => setRevealTomorrow(true)} />
       ) : activeStatus.status === "confirmed" ? (
         <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
+      ) : activeStatus.status === "paired" ? (
+        <PairedNotice
+          partnerName={activeStatus.order.partnerName}
+          dateLabel={activeLabel}
+          isTomorrow={showTomorrow}
+        />
       ) : (
         <>
           {pastCutoff ? (

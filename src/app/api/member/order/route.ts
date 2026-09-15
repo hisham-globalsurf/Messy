@@ -7,6 +7,7 @@ import { toUtcDay } from "@/lib/format";
 import { isDateOrderable, queueAutoClearAt, todayIst, tomorrowIst } from "@/lib/cutoff";
 import { assertPeopleAvailable, findConfirmedOrder, findLastOrderDraft } from "@/lib/queue";
 import { serializeQueueOrder } from "@/lib/serialize";
+import { publishOrderUpdate } from "@/lib/ably";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 import type { MemberDateOrder } from "@/types";
@@ -19,6 +20,14 @@ async function dateOrderStatus(personId: string, personName: string, date: Date)
 
   const row = await QueueOrderModel.findOne({ personId, date }).lean();
   if (row) return { status: "pending", order: serializeQueueOrder(row) };
+
+  // Someone else may have already paired with this member for a half order without this
+  // member having submitted anything of their own yet — surface that live instead of making
+  // them find out only when their own submit gets rejected as a clash.
+  const partnerRow = await QueueOrderModel.findOne({ partnerPersonId: personId, date }).lean();
+  if (partnerRow) {
+    return { status: "paired", order: { partnerName: partnerRow.personName, variant: partnerRow.variant } };
+  }
 
   return { status: "none" };
 }
@@ -88,6 +97,12 @@ export const POST = memberRoute(async (session, request: Request) => {
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
+
+  // Tell the affected partner(s) live: whoever is newly paired should see it appear, and
+  // whoever was paired before (now dropped or swapped for someone else) should see it clear.
+  const oldPartnerId = existingOwnRow?.partnerPersonId?.toString() ?? null;
+  if (oldPartnerId && oldPartnerId !== partnerPersonId) await publishOrderUpdate(oldPartnerId);
+  if (partnerPersonId && partnerPersonId !== oldPartnerId) await publishOrderUpdate(partnerPersonId);
 
   return ok(serializeQueueOrder(updated.toObject()));
 });

@@ -132,11 +132,21 @@ export interface ConfirmedOrderItem {
   partnerName: string | null;
 }
 
-/** A member's order status for one date: nothing yet, still-editable (queue), or already
- * moved into a real entry by the admin (no longer self-editable). */
+/** Someone else's pending half order that named this member as the partner — this member
+ * hasn't submitted anything themselves for the date, so there's no QueueOrderItem of their
+ * own to show, just who paired with them. */
+export interface PairedOrderItem {
+  partnerName: string;
+  variant: string | null;
+}
+
+/** A member's order status for one date: nothing yet, still-editable (queue), paired into
+ * someone else's still-pending half order, or already moved into a real entry by the admin
+ * (no longer self-editable). */
 export type MemberDateOrder =
   | { status: "none" }
   | { status: "pending"; order: QueueOrderItem }
+  | { status: "paired"; order: PairedOrderItem }
   | { status: "confirmed"; order: ConfirmedOrderItem };
 
 /** In-app announcement from the admin to all members. */
