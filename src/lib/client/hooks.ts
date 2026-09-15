@@ -66,8 +66,9 @@ export function useEntries(filters: EntryFilters) {
 }
 
 /** Admin's live queue view — polls so newly-submitted member orders show up without a manual refresh. */
+// Kept live via Ably (see useAdminRealtime) rather than polling — no refreshInterval needed.
 export function useQueue() {
-  return useSWR<QueueOrderItem[]>("/api/queue", fetcher, { refreshInterval: 5000 });
+  return useSWR<QueueOrderItem[]>("/api/queue", fetcher);
 }
 
 export interface MemberSettings {

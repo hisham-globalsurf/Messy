@@ -7,7 +7,7 @@ import { toUtcDay } from "@/lib/format";
 import { isDateOrderable, queueAutoClearAt, todayIst, tomorrowIst } from "@/lib/cutoff";
 import { assertPeopleAvailable, findConfirmedOrder, findLastOrderDraft } from "@/lib/queue";
 import { serializeQueueOrder } from "@/lib/serialize";
-import { publishOrderUpdate } from "@/lib/ably";
+import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 import type { MemberDateOrder } from "@/types";
@@ -103,6 +103,7 @@ export const POST = memberRoute(async (session, request: Request) => {
   const oldPartnerId = existingOwnRow?.partnerPersonId?.toString() ?? null;
   if (oldPartnerId && oldPartnerId !== partnerPersonId) await publishOrderUpdate(oldPartnerId);
   if (partnerPersonId && partnerPersonId !== oldPartnerId) await publishOrderUpdate(partnerPersonId);
+  await publishQueueChanged();
 
   return ok(serializeQueueOrder(updated.toObject()));
 });

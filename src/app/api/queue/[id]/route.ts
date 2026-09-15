@@ -1,7 +1,7 @@
 import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
-import { publishOrderUpdate } from "@/lib/ably";
+import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
 import { ApiError, ok, route } from "@/lib/api";
 
 export const DELETE = route(async (_session, _request: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -16,6 +16,7 @@ export const DELETE = route(async (_session, _request: Request, ctx: { params: P
   // rather than waiting to refocus the tab.
   await publishOrderUpdate(row.personId.toString());
   if (row.partnerPersonId) await publishOrderUpdate(row.partnerPersonId.toString());
+  await publishQueueChanged();
 
   return ok({ ok: true });
 });

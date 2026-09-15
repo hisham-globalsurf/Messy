@@ -76,6 +76,22 @@ export async function publishNotificationsChangedForPerson(personId: string): Pr
   }
 }
 
+/** Same shape as REPORTS_BROADCAST_CHANNEL, for the admin Queue tab — every open admin tab
+ * refetches the queue on any change instead of polling /api/queue on an interval. */
+export const QUEUE_BROADCAST_CHANNEL = "queue:broadcast";
+
+/** Tells every open admin tab to refetch the queue — fired whenever a queue row is added,
+ * edited, moved to entries, or deleted, from either the member or admin side. Same best-effort
+ * contract as publishOrderUpdate. */
+export async function publishQueueChanged(): Promise<void> {
+  try {
+    const channel = getRestClient().channels.get(QUEUE_BROADCAST_CHANNEL);
+    await channel.publish("queue-changed", {});
+  } catch (err) {
+    console.error("Ably broadcast publish failed:", err);
+  }
+}
+
 export function getAblyRestClient(): Ably.Rest {
   return getRestClient();
 }
