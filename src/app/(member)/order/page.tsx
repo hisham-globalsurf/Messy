@@ -15,7 +15,7 @@ import { useMemberName } from "@/components/feature/member/member-session-contex
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberOrders, useMemberSettings, type MemberOrders } from "@/lib/client/hooks";
-import { isPastCutoffToday } from "@/lib/cutoff";
+import { isPastCutoffToday, postCutoffOrderStage } from "@/lib/cutoff";
 import { isMessClosedOn } from "@/lib/messClosure";
 import { formatDate } from "@/lib/format";
 import type { QueueOrderItem } from "@/types";
@@ -107,7 +107,15 @@ export default function MemberOrderPage() {
       <MarqueeBanner />
 
       {pastCutoff && !showTomorrow ? (
-        <CutoffPanel showTomorrowButton onOrderTomorrow={() => setRevealTomorrow(true)} />
+        <CutoffPanel
+          showTomorrowButton
+          onOrderTomorrow={() => setRevealTomorrow(true)}
+          orderStage={
+            activeStatus.status === "pending"
+              ? postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime)
+              : null
+          }
+        />
       ) : activeStatus.status === "confirmed" ? (
         <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
       ) : activeStatus.status === "paired" ? (

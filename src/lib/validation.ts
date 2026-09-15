@@ -110,6 +110,16 @@ export const settingsUpdateSchema = z
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 10:25")
       .optional(),
     orderReminderMinutes: z.number().int().min(1).max(300).optional(),
+    orderConfirmedUntilTime: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 12:30")
+      .optional(),
+    orderDeliveredUntilTime: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 15:00")
+      .optional(),
     messClosedFrom: z.coerce.date().nullable().optional(),
     messClosedTo: z.coerce.date().nullable().optional(),
     messClosedMessage: z.string().trim().max(300).optional(),
@@ -118,6 +128,10 @@ export const settingsUpdateSchema = z
   .refine(
     (v) => !(v.messClosedFrom && v.messClosedTo) || v.messClosedFrom <= v.messClosedTo,
     { message: "Closure end date must be on or after the start date", path: ["messClosedTo"] },
+  )
+  .refine(
+    (v) => !(v.orderConfirmedUntilTime && v.orderDeliveredUntilTime) || v.orderConfirmedUntilTime < v.orderDeliveredUntilTime,
+    { message: "\"Delivered until\" must be later than \"Confirmed until\"", path: ["orderDeliveredUntilTime"] },
   );
 
 export const memberLoginSchema = z.object({

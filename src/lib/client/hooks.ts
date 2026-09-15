@@ -77,6 +77,8 @@ export interface MemberSettings {
   foodVariants: FoodVariant[];
   orderCutoffTime: string;
   orderReminderMinutes: number;
+  orderConfirmedUntilTime: string;
+  orderDeliveredUntilTime: string;
   messClosedFrom: string | null;
   messClosedTo: string | null;
   messClosedMessage: string;

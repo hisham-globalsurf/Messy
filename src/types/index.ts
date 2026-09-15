@@ -93,6 +93,10 @@ export interface Settings {
   orderCutoffTime: string;
   /** Show the member ordering-page countdown only once this many minutes remain before cutoff. */
   orderReminderMinutes: number;
+  /** After cutoff, members with a pending order see "order confirmed" until this time ("HH:mm", IST). */
+  orderConfirmedUntilTime: string;
+  /** ...then "order delivered" from that point until this time ("HH:mm", IST); nothing shown after. */
+  orderDeliveredUntilTime: string;
   /** Mess-closed period ("YYYY-MM-DD", inclusive both ends) — null when no closure is set. */
   messClosedFrom: string | null;
   messClosedTo: string | null;

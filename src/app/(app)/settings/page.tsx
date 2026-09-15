@@ -288,6 +288,8 @@ function SupplierForm({ settings }: { settings: Settings }) {
 function CutoffTimeForm({ settings }: { settings: Settings }) {
   const [cutoff, setCutoff] = useState(settings.orderCutoffTime);
   const [reminderMinutes, setReminderMinutes] = useState(String(settings.orderReminderMinutes));
+  const [confirmedUntil, setConfirmedUntil] = useState(settings.orderConfirmedUntilTime);
+  const [deliveredUntil, setDeliveredUntil] = useState(settings.orderDeliveredUntilTime);
   const [saving, setSaving] = useState(false);
 
   async function save(e: React.FormEvent) {
@@ -297,6 +299,8 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
       await mutateApi("/api/settings", "PATCH", {
         orderCutoffTime: cutoff,
         orderReminderMinutes: Number(reminderMinutes),
+        orderConfirmedUntilTime: confirmedUntil,
+        orderDeliveredUntilTime: deliveredUntil,
       });
       await globalMutate("/api/settings");
       toast.success("Member ordering settings saved");
@@ -338,6 +342,30 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
               required
               className="w-24"
             />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="order-confirmed-until">Show &quot;order confirmed&quot; until (IST)</Label>
+              <Input
+                id="order-confirmed-until"
+                type="time"
+                value={confirmedUntil}
+                onChange={(e) => setConfirmedUntil(e.target.value)}
+                required
+                className="w-40"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="order-delivered-until">Then &quot;order delivered&quot; until (IST)</Label>
+              <Input
+                id="order-delivered-until"
+                type="time"
+                value={deliveredUntil}
+                onChange={(e) => setDeliveredUntil(e.target.value)}
+                required
+                className="w-40"
+              />
+            </div>
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Spinner />}

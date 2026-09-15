@@ -46,7 +46,7 @@ export function ReportIssueButton() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Report an issue"
-        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex size-11 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
+        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-40 flex size-11 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"
       >
         <Flag className="size-5" />
       </button>

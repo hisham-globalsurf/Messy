@@ -50,6 +50,25 @@ export function minutesUntilCutoffToday(cutoffTime: string): number {
   return hours * 60 + minutes - nowMinutes;
 }
 
+function toMinutesOfDay(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+/** Which post-cutoff message a member with a pending order for today should see: "confirmed"
+ * until `confirmedUntil`, then "delivered" until `deliveredUntil` (both "HH:mm", IST), then
+ * nothing once `deliveredUntil` has passed. */
+export function postCutoffOrderStage(
+  confirmedUntil: string,
+  deliveredUntil: string,
+): "confirmed" | "delivered" | null {
+  const d = istNow();
+  const nowMinutes = d.getUTCHours() * 60 + d.getUTCMinutes();
+  if (nowMinutes < toMinutesOfDay(confirmedUntil)) return "confirmed";
+  if (nowMinutes < toMinutesOfDay(deliveredUntil)) return "delivered";
+  return null;
+}
+
 const QUEUE_AUTO_CLEAR_IST_HOUR = 14; // 2pm — unprocessed queue orders are moot once lunch is out.
 
 /** When a queue order for `date` (UTC midnight, see toUtcDay()) should auto-expire — 2pm IST
