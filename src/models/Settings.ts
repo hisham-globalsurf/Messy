@@ -23,10 +23,9 @@ const settingsSchema = new Schema(
     orderCutoffTime: { type: String, required: true, default: "10:25" },
     /** Show the member ordering-page countdown only once this many minutes remain before cutoff. */
     orderReminderMinutes: { type: Number, required: true, default: 59, min: 1, max: 300 },
-    /** After cutoff, members with a pending order see "order confirmed" until this time ("HH:mm", IST). */
+    /** After cutoff, members with a pending order see "order confirmed" until this time ("HH:mm",
+     * IST), then "order delivered" for the rest of the day. */
     orderConfirmedUntilTime: { type: String, required: true, default: "12:30" },
-    /** ...then "order delivered" from that point until this time ("HH:mm", IST); nothing shown after. */
-    orderDeliveredUntilTime: { type: String, required: true, default: "15:00" },
     /** Mess-closed period (UTC midnight, inclusive both ends) — while today falls in this range,
      * members see a closure notice instead of the ordering form. Auto-clears once `to` passes;
      * nothing needs to run to "turn it off" since it's just a date comparison every time. */

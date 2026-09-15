@@ -3,6 +3,7 @@ import { z } from "zod";
 import { connectDB } from "@/lib/db/mongoose";
 import { PersonModel } from "@/models/Person";
 import { ApiError, ok, route } from "@/lib/api";
+import { publishBlockedChanged } from "@/lib/ably";
 
 const blockSchema = z.object({ blocked: z.boolean() });
 
@@ -14,6 +15,8 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
 
   const person = await PersonModel.findByIdAndUpdate(id, { blocked }, { new: true }).lean();
   if (!person) throw new ApiError(404, "Person not found");
+
+  await publishBlockedChanged(person._id.toString());
 
   return ok({ _id: person._id.toString(), blocked: person.blocked ?? false });
 });

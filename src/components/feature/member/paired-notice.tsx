@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export function PairedNotice({
   partnerName,
@@ -13,10 +14,10 @@ export function PairedNotice({
     <div className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{dateLabel}</h2>
-        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2.5 py-1 text-xs font-medium text-sky-700 dark:text-sky-400">
-          <Users className="size-3.5" />
+        <Badge variant="sky" className="h-auto gap-1 px-2.5 py-1">
+          <Users />
           Paired
-        </span>
+        </Badge>
       </div>
       <p className="text-sm font-medium">
         You&apos;re paired for a meal {isTomorrow ? "tomorrow" : "today"} with {partnerName}.

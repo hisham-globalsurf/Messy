@@ -19,7 +19,6 @@ export const GET = memberRoute(async () => {
     orderCutoffTime: settings.orderCutoffTime,
     orderReminderMinutes: settings.orderReminderMinutes,
     orderConfirmedUntilTime: settings.orderConfirmedUntilTime,
-    orderDeliveredUntilTime: settings.orderDeliveredUntilTime,
     messClosedFrom: settings.messClosedFrom ? new Date(settings.messClosedFrom).toISOString().slice(0, 10) : null,
     messClosedTo: settings.messClosedTo ? new Date(settings.messClosedTo).toISOString().slice(0, 10) : null,
     messClosedMessage: settings.messClosedMessage ?? "",

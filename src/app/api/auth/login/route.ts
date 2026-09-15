@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { ZodError } from "zod";
 import { connectDB } from "@/lib/db/mongoose";
 import { AdminUserModel } from "@/models/AdminUser";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSessionCookie } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validation";
 import { clientIp, rateLimit, resetRateLimit } from "@/lib/rate-limit";
+import { errorResponse } from "@/lib/api";
 
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 5 * 60 * 1000;
@@ -33,10 +33,6 @@ export async function POST(request: Request): Promise<Response> {
     await createSessionCookie({ sub: user._id.toString(), username: user.username });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    if (err instanceof ZodError) {
-      return NextResponse.json({ error: "Invalid input" }, { status: 422 });
-    }
-    console.error(err);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return errorResponse(err);
   }
 }

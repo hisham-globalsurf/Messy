@@ -1,25 +1,37 @@
 import "server-only";
-import { NextResponse } from "next/server";
-import { ZodError } from "zod";
 import { getMemberSession } from "@/lib/auth/memberSession";
 import { connectDB } from "@/lib/db/mongoose";
 import { PersonModel } from "@/models/Person";
-import { ApiError } from "@/lib/api";
+import { ApiError, errorResponse } from "@/lib/api";
 import type { MemberSessionUser } from "@/types";
 
 export const BLOCKED_MESSAGE = "You've been blocked by the admin. Please contact them for help.";
 
-/** Re-checks the Person record on every request (not just at login) — a member's 10-year
- * session cookie shouldn't keep working the moment an admin blocks or deletes them. */
-export async function requireMemberSession(): Promise<MemberSessionUser> {
+async function loadMemberSession(): Promise<{ session: MemberSessionUser; blocked: boolean }> {
   const session = await getMemberSession();
   if (!session) throw new ApiError(401, "Not authenticated");
 
   await connectDB();
   const person = await PersonModel.findById(session.sub).lean();
   if (!person) throw new ApiError(401, "Not authenticated");
-  if (person.blocked) throw new ApiError(403, BLOCKED_MESSAGE);
 
+  return { session, blocked: person.blocked ?? false };
+}
+
+/** Session + Person-still-exists check, without the blocked check — used where a blocked member
+ * must still be reachable, e.g. the Ably token route (so the "blocked-changed" realtime event
+ * can reach an already-open tab and unblock it without a manual refresh). Prefer
+ * `requireMemberSession` below for anything that isn't specifically that case. */
+export async function requireMemberSessionIgnoringBlock(): Promise<MemberSessionUser> {
+  const { session } = await loadMemberSession();
+  return session;
+}
+
+/** Re-checks the Person record on every request (not just at login) — a member's 10-year
+ * session cookie shouldn't keep working the moment an admin blocks or deletes them. */
+export async function requireMemberSession(): Promise<MemberSessionUser> {
+  const { session, blocked } = await loadMemberSession();
+  if (blocked) throw new ApiError(403, BLOCKED_MESSAGE);
   return session;
 }
 
@@ -33,17 +45,7 @@ export function memberRoute<T extends unknown[]>(
       const session = await requireMemberSession();
       return await handler(session, ...args);
     } catch (err) {
-      if (err instanceof ApiError) {
-        return NextResponse.json({ error: err.message }, { status: err.status });
-      }
-      if (err instanceof ZodError) {
-        return NextResponse.json(
-          { error: "Invalid input", issues: err.flatten() },
-          { status: 422 },
-        );
-      }
-      console.error(err);
-      return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+      return errorResponse(err);
     }
   };
 }

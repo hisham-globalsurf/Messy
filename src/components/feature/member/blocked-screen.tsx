@@ -6,10 +6,15 @@ import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { mutateApi } from "@/lib/client/fetcher";
+import { useMemberRealtime } from "@/lib/client/useMemberRealtime";
 
-export function BlockedScreen() {
+export function BlockedScreen({ personId }: { personId: string }) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // If admin unblocks them while this screen is up, swap back to the normal app immediately —
+  // see useMemberRealtime for the Ably wiring.
+  useMemberRealtime(personId);
 
   async function signOut() {
     setLoggingOut(true);

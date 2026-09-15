@@ -79,7 +79,6 @@ export interface MemberSettings {
   orderCutoffTime: string;
   orderReminderMinutes: number;
   orderConfirmedUntilTime: string;
-  orderDeliveredUntilTime: string;
   messClosedFrom: string | null;
   messClosedTo: string | null;
   messClosedMessage: string;

@@ -8,6 +8,7 @@ import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foo
 import { toUtcDay } from "@/lib/format";
 import { serializeEntry } from "@/lib/serialize";
 import { ApiError, ok, route } from "@/lib/api";
+import { entryHasPerson } from "@/lib/entryLookup";
 
 export const GET = route(async (_session, request: NextRequest) => {
   const sp = request.nextUrl.searchParams;
@@ -32,12 +33,7 @@ export const GET = route(async (_session, request: NextRequest) => {
   let entries = await MealEntryModel.find(query).sort({ date: -1, createdAt: -1 }).lean();
 
   if (person) {
-    const lc = person.toLowerCase();
-    entries = entries.filter(
-      (e) =>
-        (e.fullEaters ?? []).some((fe) => fe.name.toLowerCase() === lc) ||
-        (e.halfPairs ?? []).some((p) => p.names.some((n) => n.toLowerCase() === lc)),
-    );
+    entries = entries.filter((e) => entryHasPerson({ fullEaters: e.fullEaters ?? [], halfPairs: e.halfPairs ?? [] }, person));
   }
 
   return ok(entries.map((e) => serializeEntry(e)));

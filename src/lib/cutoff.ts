@@ -61,19 +61,13 @@ function toMinutesOfDay(time: string | undefined | null): number | null {
 }
 
 /** Which post-cutoff message a member with a pending order for today should see: "confirmed"
- * until `confirmedUntil`, then "delivered" until `deliveredUntil` (both "HH:mm", IST), then
- * nothing once `deliveredUntil` has passed (or if either time is missing/malformed). */
-export function postCutoffOrderStage(
-  confirmedUntil: string | undefined | null,
-  deliveredUntil: string | undefined | null,
-): "confirmed" | "delivered" | null {
+ * until `confirmedUntil` ("HH:mm", IST), then "delivered" for the rest of the day. */
+export function postCutoffOrderStage(confirmedUntil: string | undefined | null): "confirmed" | "delivered" {
   const confirmedMinutes = toMinutesOfDay(confirmedUntil);
-  const deliveredMinutes = toMinutesOfDay(deliveredUntil);
   const d = istNow();
   const nowMinutes = d.getUTCHours() * 60 + d.getUTCMinutes();
   if (confirmedMinutes !== null && nowMinutes < confirmedMinutes) return "confirmed";
-  if (deliveredMinutes !== null && nowMinutes < deliveredMinutes) return "delivered";
-  return null;
+  return "delivered";
 }
 
 const QUEUE_AUTO_CLEAR_IST_HOUR = 14; // 2pm — unprocessed queue orders are moot once lunch is out.

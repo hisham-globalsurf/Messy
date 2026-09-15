@@ -1,33 +1,33 @@
 import { CheckCircle2, UtensilsCrossed } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { ConfirmedOrderItem } from "@/types";
 
 interface Props {
   order: ConfirmedOrderItem;
   dateLabel: string;
   /** Kitchen-timing stage from {@link import("@/lib/cutoff").postCutoffOrderStage}, computed
-   * from `orderConfirmedUntilTime`/`orderDeliveredUntilTime` — swaps the pill to "Delivered"
-   * once the confirmed window has passed. `null` (both windows passed) is treated the same as
-   * "delivered" since that's the last real stage; omit entirely (e.g. for tomorrow's order,
-   * where these same-day windows don't apply) to always show "Confirmed". */
-  stage?: "confirmed" | "delivered" | null;
+   * from `orderConfirmedUntilTime` — swaps the pill to "Delivered" once the confirmed window
+   * has passed, for the rest of the day. Omit entirely (e.g. for tomorrow's order, where this
+   * same-day window doesn't apply) to always show "Confirmed". */
+  stage?: "confirmed" | "delivered";
 }
 
 export function OrderConfirmedNotice({ order, dateLabel, stage }: Props) {
-  const delivered = stage === "delivered" || stage === null;
+  const delivered = stage === "delivered";
   return (
     <div className="space-y-3 rounded-xl border p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{dateLabel}</h2>
         {delivered ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400">
-            <UtensilsCrossed className="size-3.5" />
+          <Badge variant="info" className="h-auto gap-1 px-2.5 py-1">
+            <UtensilsCrossed />
             Delivered
-          </span>
+          </Badge>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-            <CheckCircle2 className="size-3.5" />
+          <Badge variant="success" className="h-auto gap-1 px-2.5 py-1">
+            <CheckCircle2 />
             Confirmed
-          </span>
+          </Badge>
         )}
       </div>
       <p className="text-sm font-medium">

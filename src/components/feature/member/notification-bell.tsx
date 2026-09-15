@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useNotifications } from "@/lib/client/hooks";
@@ -98,9 +99,9 @@ export function NotificationBell() {
                       />
                       <div className="min-w-0 flex-1">
                         {n.kind === "reply" && (
-                          <span className="mb-1 inline-flex w-fit items-center rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400">
+                          <Badge variant="violet" className="mb-1 text-[10px]">
                             Admin reply
-                          </span>
+                          </Badge>
                         )}
                         <p className="text-sm">{n.message}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{formatWhen(n.createdAt)}</p>

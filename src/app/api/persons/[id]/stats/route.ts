@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { MealEntryModel } from "@/models/MealEntry";
 import { PersonModel } from "@/models/Person";
 import { ApiError, ok, route } from "@/lib/api";
+import { entryHasPerson, findFullEater, findHalfPair, halfPairPartner } from "@/lib/entryLookup";
 import type { PersonHistoryItem, PersonStats } from "@/types";
 
 export const GET = route(async (_session, _request: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -19,21 +20,15 @@ export const GET = route(async (_session, _request: Request, ctx: { params: Prom
   // A deleted person may still have historical entries — resolve their name from those.
   let displayName = person?.name;
   if (!displayName && !isValidObjectId(key)) {
-    const lc = key.toLowerCase();
-    const inEntries = entries.some(
-      (e) =>
-        (e.fullEaters ?? []).some((fe) => fe.name.toLowerCase() === lc) ||
-        (e.halfPairs ?? []).some((p) => p.names.some((n) => n.toLowerCase() === lc)),
-    );
+    const inEntries = entries.some((e) => entryHasPerson({ fullEaters: e.fullEaters ?? [], halfPairs: e.halfPairs ?? [] }, key));
     if (inEntries) displayName = key;
   }
   if (!displayName) throw new ApiError(404, "Person not found");
 
-  const lc = displayName.toLowerCase();
   const history: PersonHistoryItem[] = [];
   for (const e of entries) {
-    const full = (e.fullEaters ?? []).find((fe) => fe.name.toLowerCase() === lc);
-    const pair = (e.halfPairs ?? []).find((p) => p.names.some((n) => n.toLowerCase() === lc));
+    const full = findFullEater(e.fullEaters ?? [], displayName);
+    const pair = findHalfPair(e.halfPairs ?? [], displayName);
     if (!full && !pair) continue;
 
     const settled = Boolean(e.settlementId);
@@ -54,7 +49,7 @@ export const GET = route(async (_session, _request: Request, ctx: { params: Prom
       });
     }
     if (pair) {
-      const partner = pair.names.find((n) => n.toLowerCase() !== lc) ?? null;
+      const partner = halfPairPartner(pair, displayName);
       history.push({
         entryId: e._id.toString(),
         date,

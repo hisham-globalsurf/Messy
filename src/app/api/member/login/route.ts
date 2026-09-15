@@ -7,6 +7,7 @@ import { memberLoginSchema } from "@/lib/validation";
 import { normalizePhone } from "@/lib/phone";
 import { clientIp, rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { BLOCKED_MESSAGE } from "@/lib/memberApi";
+import { errorResponse } from "@/lib/api";
 
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 5 * 60 * 1000;
@@ -54,7 +55,6 @@ export async function POST(request: Request): Promise<Response> {
     if (err instanceof ZodError) {
       return NextResponse.json({ error: "Enter a phone number" }, { status: 422 });
     }
-    console.error(err);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    return errorResponse(err);
   }
 }

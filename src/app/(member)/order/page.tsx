@@ -55,7 +55,7 @@ export default function MemberOrderPage() {
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
   const tomorrowLabel = `Tomorrow — ${formatDate(orders.tomorrowDate)}`;
-  const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime);
+  const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime);
 
   async function submit(key: "today" | "tomorrow", date: string, draft: OrderDraft) {
     setSaving(key);

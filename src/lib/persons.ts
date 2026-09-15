@@ -1,5 +1,6 @@
 import { PersonModel } from "@/models/Person";
 import { MealEntryModel } from "@/models/MealEntry";
+import { entryHasPerson } from "@/lib/entryLookup";
 
 const collation = { locale: "en", strength: 2 } as const;
 
@@ -31,11 +32,7 @@ export async function renamePersonInEntries(oldName: string, newName: string): P
   // matches nothing — confirmed against the driver directly. Filter in
   // application code instead, same as the `person` filter in the entries list route.
   const all = await MealEntryModel.find();
-  const entries = all.filter(
-    (e) =>
-      e.fullEaters.some((fe) => fe.name.toLowerCase() === lc) ||
-      e.halfPairs.some((p) => p.names.some((n) => n.toLowerCase() === lc)),
-  );
+  const entries = all.filter((e) => entryHasPerson(e, oldName));
 
   let touched = 0;
   for (const entry of entries) {

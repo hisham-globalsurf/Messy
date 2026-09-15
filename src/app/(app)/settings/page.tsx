@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mutate as globalMutate } from "swr";
 import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimeInput } from "@/components/ui/time-input";
@@ -290,7 +291,6 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
   const [cutoff, setCutoff] = useState(settings.orderCutoffTime);
   const [reminderMinutes, setReminderMinutes] = useState(String(settings.orderReminderMinutes));
   const [confirmedUntil, setConfirmedUntil] = useState(settings.orderConfirmedUntilTime);
-  const [deliveredUntil, setDeliveredUntil] = useState(settings.orderDeliveredUntilTime);
   const [saving, setSaving] = useState(false);
 
   async function save(e: React.FormEvent) {
@@ -301,7 +301,6 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
         orderCutoffTime: cutoff,
         orderReminderMinutes: Number(reminderMinutes),
         orderConfirmedUntilTime: confirmedUntil,
-        orderDeliveredUntilTime: deliveredUntil,
       });
       await globalMutate("/api/settings");
       toast.success("Member ordering settings saved");
@@ -342,25 +341,14 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
               className="w-24"
             />
           </div>
-          <div className="flex flex-wrap gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="order-confirmed-until">Show &quot;order confirmed&quot; until (IST)</Label>
-              <TimeInput
-                id="order-confirmed-until"
-                value={confirmedUntil}
-                onChange={(e) => setConfirmedUntil(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="order-delivered-until">Then &quot;order delivered&quot; until (IST)</Label>
-              <TimeInput
-                id="order-delivered-until"
-                value={deliveredUntil}
-                onChange={(e) => setDeliveredUntil(e.target.value)}
-                required
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="order-confirmed-until">Show &quot;order confirmed&quot; until (IST), then &quot;delivered&quot; for the rest of the day</Label>
+            <TimeInput
+              id="order-confirmed-until"
+              value={confirmedUntil}
+              onChange={(e) => setConfirmedUntil(e.target.value)}
+              required
+            />
           </div>
           <Button type="submit" disabled={saving}>
             {saving && <Spinner />}
@@ -429,9 +417,9 @@ function MessClosureForm({ settings }: { settings: Settings }) {
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Mess availability</CardTitle>
           {isActive && (
-            <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+            <Badge variant="warning" className="h-auto px-2.5 py-1">
               Currently closed
-            </span>
+            </Badge>
           )}
         </div>
         <CardDescription>

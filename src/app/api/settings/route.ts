@@ -30,7 +30,6 @@ export const PATCH = route(async (_session, request: Request) => {
   if (patch.orderCutoffTime !== undefined) settings.orderCutoffTime = patch.orderCutoffTime;
   if (patch.orderReminderMinutes !== undefined) settings.orderReminderMinutes = patch.orderReminderMinutes;
   if (patch.orderConfirmedUntilTime !== undefined) settings.orderConfirmedUntilTime = patch.orderConfirmedUntilTime;
-  if (patch.orderDeliveredUntilTime !== undefined) settings.orderDeliveredUntilTime = patch.orderDeliveredUntilTime;
   if (patch.messClosedFrom !== undefined) settings.messClosedFrom = patch.messClosedFrom;
   if (patch.messClosedTo !== undefined) settings.messClosedTo = patch.messClosedTo;
   if (patch.messClosedMessage !== undefined) settings.messClosedMessage = patch.messClosedMessage;

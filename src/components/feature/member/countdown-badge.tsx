@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { minutesUntilCutoffToday } from "@/lib/cutoff";
 
 function format(minutes: number): string {
@@ -27,8 +28,8 @@ export function CountdownBadge({ cutoffTime, reminderMinutes }: { cutoffTime: st
   if (minutes === null || minutes <= 0 || minutes > reminderMinutes) return null;
 
   return (
-    <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+    <Badge variant="warning" className="h-auto px-2.5 py-1">
       {format(minutes)}
-    </span>
+    </Badge>
   );
 }

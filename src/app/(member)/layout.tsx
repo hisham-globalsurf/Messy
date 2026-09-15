@@ -19,7 +19,7 @@ export default async function MemberLayout({ children }: LayoutProps<"/">) {
 
   await connectDB();
   const person = await PersonModel.findById(session.sub).lean();
-  if (!person || person.blocked) return <BlockedScreen />;
+  if (!person || person.blocked) return <BlockedScreen personId={session.sub} />;
 
   return (
     <MemberShell name={session.name} personId={session.sub}>

@@ -22,74 +22,64 @@ export function memberChannelName(personId: string): string {
  * updates with no single-person target — e.g. admin's mess-wide "send notification". */
 export const NOTIFICATIONS_BROADCAST_CHANNEL = "notifications:broadcast";
 
-/** Tells a member's own open tab(s) to refetch their order/notifications. Best-effort: if Ably
- * is unreachable or misconfigured, the write that triggered this still succeeds — the member
- * just falls back to SWR's revalidate-on-focus/-reconnect until they next switch back to the tab. */
-export async function publishOrderUpdate(personId: string): Promise<void> {
-  try {
-    const channel = getRestClient().channels.get(memberChannelName(personId));
-    await channel.publish("order-updated", {});
-  } catch (err) {
-    console.error(`Ably publish failed for person ${personId}:`, err);
-  }
-}
-
-/** Tells every open member tab to refetch in-app notifications — used for a mess-wide
- * notification create/clear (no specific recipients) and for clearing all, which always affects
- * everyone regardless of any one notification's recipients. Same best-effort contract as
- * publishOrderUpdate. */
-export async function publishNotificationsChangedForAll(): Promise<void> {
-  try {
-    const channel = getRestClient().channels.get(NOTIFICATIONS_BROADCAST_CHANNEL);
-    await channel.publish("notifications-changed", {});
-  } catch (err) {
-    console.error("Ably broadcast publish failed:", err);
-  }
-}
-
 /** The admin app has no per-admin id to scope a channel to (unlike a member's Person id), and
  * every admin session should see the same thing, so this is one shared broadcast channel — same
  * shape as NOTIFICATIONS_BROADCAST_CHANNEL but for the admin side. */
 export const REPORTS_BROADCAST_CHANNEL = "reports:broadcast";
 
-/** Tells every open admin tab to refetch the reports list — fired right after a member submits
- * one, so it shows up on the Reports tab without waiting for a manual refresh. Same best-effort
- * contract as publishOrderUpdate: a failure here never fails the report submission itself. */
-export async function publishReportCreated(): Promise<void> {
+/** Same shape as REPORTS_BROADCAST_CHANNEL, for the admin Queue tab — every open admin tab
+ * refetches the queue on any change instead of polling /api/queue on an interval. */
+export const QUEUE_BROADCAST_CHANNEL = "queue:broadcast";
+
+/** Publishes one event with an empty payload, swallowing any failure — every `publish*` export
+ * below is a thin wrapper around this. Best-effort: if Ably is unreachable or misconfigured, the
+ * write that triggered the publish still succeeds — the affected tab(s) just fall back to SWR's
+ * revalidate-on-focus/-reconnect (or, for `publishBlockedChanged`, a manual refresh) until they
+ * next reconnect. */
+async function publishBestEffort(channelName: string, event: string): Promise<void> {
   try {
-    const channel = getRestClient().channels.get(REPORTS_BROADCAST_CHANNEL);
-    await channel.publish("report-created", {});
+    const channel = getRestClient().channels.get(channelName);
+    await channel.publish(event, {});
   } catch (err) {
-    console.error("Ably broadcast publish failed:", err);
+    console.error(`Ably publish failed for channel "${channelName}":`, err);
   }
+}
+
+/** Tells a member's own open tab(s) to refetch their order/notifications. */
+export function publishOrderUpdate(personId: string): Promise<void> {
+  return publishBestEffort(memberChannelName(personId), "order-updated");
+}
+
+/** Tells every open member tab to refetch in-app notifications — used for a mess-wide
+ * notification create/clear (no specific recipients) and for clearing all, which always affects
+ * everyone regardless of any one notification's recipients. */
+export function publishNotificationsChangedForAll(): Promise<void> {
+  return publishBestEffort(NOTIFICATIONS_BROADCAST_CHANNEL, "notifications-changed");
+}
+
+/** Tells every open admin tab to refetch the reports list — fired right after a member submits
+ * one, so it shows up on the Reports tab without waiting for a manual refresh. */
+export function publishReportCreated(): Promise<void> {
+  return publishBestEffort(REPORTS_BROADCAST_CHANNEL, "report-created");
 }
 
 /** Tells just this one member's open tab(s) to refetch in-app notifications — used when a
  * notification targets specific people rather than everyone. Reuses the member's existing
  * personal channel (already granted for order updates), so no extra token capability is needed. */
-export async function publishNotificationsChangedForPerson(personId: string): Promise<void> {
-  try {
-    const channel = getRestClient().channels.get(memberChannelName(personId));
-    await channel.publish("notifications-changed", {});
-  } catch (err) {
-    console.error(`Ably publish failed for person ${personId}:`, err);
-  }
+export function publishNotificationsChangedForPerson(personId: string): Promise<void> {
+  return publishBestEffort(memberChannelName(personId), "notifications-changed");
 }
 
-/** Same shape as REPORTS_BROADCAST_CHANNEL, for the admin Queue tab — every open admin tab
- * refetches the queue on any change instead of polling /api/queue on an interval. */
-export const QUEUE_BROADCAST_CHANNEL = "queue:broadcast";
-
 /** Tells every open admin tab to refetch the queue — fired whenever a queue row is added,
- * edited, moved to entries, or deleted, from either the member or admin side. Same best-effort
- * contract as publishOrderUpdate. */
-export async function publishQueueChanged(): Promise<void> {
-  try {
-    const channel = getRestClient().channels.get(QUEUE_BROADCAST_CHANNEL);
-    await channel.publish("queue-changed", {});
-  } catch (err) {
-    console.error("Ably broadcast publish failed:", err);
-  }
+ * edited, moved to entries, or deleted, from either the member or admin side. */
+export function publishQueueChanged(): Promise<void> {
+  return publishBestEffort(QUEUE_BROADCAST_CHANNEL, "queue-changed");
+}
+
+/** Tells this member's open tab(s) to re-run the server layout — used when admin blocks/unblocks
+ * them, so the app swaps to/from BlockedScreen instantly instead of waiting for a manual refresh. */
+export function publishBlockedChanged(personId: string): Promise<void> {
+  return publishBestEffort(memberChannelName(personId), "blocked-changed");
 }
 
 export function getAblyRestClient(): Ably.Rest {

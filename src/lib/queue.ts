@@ -7,6 +7,7 @@ import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foo
 import { sendPushToPerson } from "@/lib/push";
 import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
 import { ApiError } from "@/lib/api";
+import { findFullEater, findHalfPair, halfPairPartner } from "@/lib/entryLookup";
 
 /** Rewrite a person's name across any pending queue rows — cascades a Person rename,
  * mirroring `renamePersonInEntries` in src/lib/persons.ts. */
@@ -74,18 +75,14 @@ export interface LastOrderDraft {
 /** The member's most recent past meal (from settled MealEntry history, newest first) —
  * used to prefill the order form so a member doesn't have to re-pick the same thing daily. */
 export async function findLastOrderDraft(personName: string): Promise<LastOrderDraft | null> {
-  const lc = personName.toLowerCase();
   const entries = await MealEntryModel.find().sort({ date: -1 }).lean();
 
   for (const entry of entries) {
-    const full = entry.fullEaters.find((e) => e.name.toLowerCase() === lc);
+    const full = findFullEater(entry.fullEaters, personName);
     if (full) return { kind: "full", variant: full.variant, count: full.count, partnerName: null };
 
-    const pair = entry.halfPairs.find((p) => p.names.some((n) => n.toLowerCase() === lc));
-    if (pair) {
-      const partnerName = pair.names.find((n) => n.toLowerCase() !== lc) ?? null;
-      return { kind: "half", variant: pair.variant, count: 1, partnerName };
-    }
+    const pair = findHalfPair(entry.halfPairs, personName);
+    if (pair) return { kind: "half", variant: pair.variant, count: 1, partnerName: halfPairPartner(pair, personName) };
   }
   return null;
 }
@@ -102,18 +99,15 @@ export interface ConfirmedOrder {
  * being true again if the admin later deletes the entry or removes them from it, since this is
  * re-checked fresh on every request rather than being a stored flag. */
 export async function findConfirmedOrder(personName: string, date: Date): Promise<ConfirmedOrder | null> {
-  const lc = personName.toLowerCase();
   const entry = await MealEntryModel.findOne({ date }).lean();
   if (!entry) return null;
 
-  const full = entry.fullEaters.find((e) => e.name.toLowerCase() === lc);
+  const full = findFullEater(entry.fullEaters, personName);
   if (full) return { kind: "full", variant: full.variant, count: full.count, partnerName: null };
 
-  const pair = entry.halfPairs.find((p) => p.names.some((n) => n.toLowerCase() === lc));
-  if (pair) {
-    const partnerName = pair.names.find((n) => n.toLowerCase() !== lc) ?? null;
-    return { kind: "half", variant: pair.variant, count: 1, partnerName };
-  }
+  const pair = findHalfPair(entry.halfPairs, personName);
+  if (pair) return { kind: "half", variant: pair.variant, count: 1, partnerName: halfPairPartner(pair, personName) };
+
   return null;
 }
 

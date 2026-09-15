@@ -6,6 +6,7 @@ import { entryParticipantSchema } from "@/lib/validation";
 import { variantPriceLookup } from "@/lib/foodVariants";
 import { serializeEntry } from "@/lib/serialize";
 import { ApiError, ok, route } from "@/lib/api";
+import { findFullEater, findHalfPair } from "@/lib/entryLookup";
 
 /**
  * Updates one person's participation in an entry: paid status always, plus
@@ -22,11 +23,11 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
   if (!entry) throw new ApiError(404, "Entry not found");
   if (entry.settlementId) throw new ApiError(409, "Settled entries are read-only");
 
-  const lc = name.toLowerCase();
-  const fullEater = entry.fullEaters.find((e) => e.name.toLowerCase() === lc);
-  const halfPair = entry.halfPairs.find((p) => p.names.some((n) => n.toLowerCase() === lc));
+  const fullEater = findFullEater(entry.fullEaters, name);
+  const halfPair = findHalfPair(entry.halfPairs, name);
   if (!fullEater && !halfPair) throw new ApiError(400, "That person isn't part of this entry");
 
+  const lc = name.toLowerCase();
   const canonicalName = fullEater ? fullEater.name : halfPair!.names.find((n) => n.toLowerCase() === lc)!;
 
   if (paid !== undefined) {

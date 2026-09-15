@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Clock, UtensilsCrossed } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -15,15 +16,15 @@ export function CutoffPanel({ showTomorrowButton, onOrderTomorrow, orderStage }:
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-6 text-center">
       {orderStage === "confirmed" ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-          <CheckCircle2 className="size-4" />
+        <Badge variant="success" className="h-auto gap-1.5 px-3 py-1.5 text-sm">
+          <CheckCircle2 />
           Today&apos;s order confirmed
-        </span>
+        </Badge>
       ) : orderStage === "delivered" ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-400">
-          <UtensilsCrossed className="size-4" />
+        <Badge variant="info" className="h-auto gap-1.5 px-3 py-1.5 text-sm">
+          <UtensilsCrossed />
           Today&apos;s order delivered
-        </span>
+        </Badge>
       ) : (
         <>
           <div className="flex size-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400">
