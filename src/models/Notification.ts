@@ -7,6 +7,10 @@ export interface NotificationDoc {
    * people — both its in-app visibility (see the member GET route's filter) and, at send time,
    * who actually gets pushed/live-notified (see src/app/api/notifications/route.ts). */
   personIds: Types.ObjectId[];
+  /** "broadcast" (default) is a regular admin-sent announcement; "reply" is the admin's direct
+   * response to a member's report (src/app/api/reports/[id]/reply/route.ts) — the member's
+   * notification panel shows a distinct pill for these. */
+  kind: "broadcast" | "reply";
   /** createdAt + 2 days — MongoDB auto-deletes at this instant (TTL index below); once a
    * notification's meal window has long passed there's no reason to keep it around. */
   expireAt: Date;
@@ -17,6 +21,7 @@ const notificationSchema = new Schema<NotificationDoc>(
   {
     message: { type: String, required: true, trim: true, maxlength: 500 },
     personIds: { type: [Schema.Types.ObjectId], ref: "Person", default: [] },
+    kind: { type: String, enum: ["broadcast", "reply"], default: "broadcast" },
     expireAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } },

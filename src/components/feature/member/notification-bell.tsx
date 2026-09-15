@@ -97,6 +97,11 @@ export function NotificationBell() {
                         )}
                       />
                       <div className="min-w-0 flex-1">
+                        {n.kind === "reply" && (
+                          <span className="mb-1 inline-flex w-fit items-center rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-400">
+                            Admin reply
+                          </span>
+                        )}
                         <p className="text-sm">{n.message}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{formatWhen(n.createdAt)}</p>
                       </div>

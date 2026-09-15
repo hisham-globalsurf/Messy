@@ -155,6 +155,10 @@ export const reportCreateSchema = z.object({
   message: z.string().trim().min(1, "Tell us what's wrong").max(1000),
 });
 
+export const reportReplySchema = z.object({
+  message: z.string().trim().min(1, "Reply can't be empty").max(500),
+});
+
 export const notificationCreateSchema = z
   .object({
     message: z.string().trim().min(1, "Message is required").max(500),

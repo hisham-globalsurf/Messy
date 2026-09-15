@@ -68,6 +68,7 @@ interface QueueOrderLike {
 interface NotificationLike {
   _id: { toString(): string };
   message: string;
+  kind?: "broadcast" | "reply";
   createdAt: Date | string;
 }
 
@@ -138,6 +139,7 @@ export function serializeNotification(doc: NotificationLike): NotificationItem {
   return {
     _id: doc._id.toString(),
     message: doc.message,
+    kind: doc.kind ?? "broadcast",
     createdAt: new Date(doc.createdAt).toISOString(),
   };
 }

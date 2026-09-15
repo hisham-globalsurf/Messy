@@ -153,10 +153,11 @@ export type MemberDateOrder =
   | { status: "paired"; order: PairedOrderItem }
   | { status: "confirmed"; order: ConfirmedOrderItem };
 
-/** In-app announcement from the admin to all members. */
+/** In-app announcement from the admin to all members, or a direct reply to a member's report. */
 export interface NotificationItem {
   _id: string;
   message: string;
+  kind: "broadcast" | "reply";
   createdAt: string;
 }
 
