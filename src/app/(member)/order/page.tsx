@@ -25,8 +25,8 @@ export default function MemberOrderPage() {
   const { data: settings, isLoading: settingsLoading } = useMemberSettings();
   const { data: orders, isLoading: ordersLoading, error } = useMemberOrders();
   const [revealTomorrow, setRevealTomorrow] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState<"today" | "tomorrow" | null>(null);
+  const [deleting, setDeleting] = useState<"today" | "tomorrow" | null>(null);
 
   if (settingsLoading || ordersLoading || !settings || !orders) {
     return (
@@ -53,19 +53,16 @@ export default function MemberOrderPage() {
 
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
-  const activeDate = showTomorrow ? orders.tomorrowDate : orders.todayDate;
-  const activeKey = showTomorrow ? "tomorrow" : "today";
-  const activeStatus = showTomorrow ? orders.tomorrow : orders.today;
-  const activeLabel = showTomorrow ? `Tomorrow — ${formatDate(orders.tomorrowDate)}` : "Today";
+  const tomorrowLabel = `Tomorrow — ${formatDate(orders.tomorrowDate)}`;
 
-  async function submit(draft: OrderDraft) {
-    setSaving(true);
+  async function submit(key: "today" | "tomorrow", date: string, draft: OrderDraft) {
+    setSaving(key);
     try {
       // The POST response is the freshly-saved document itself — write it straight into the
       // SWR cache instead of paying for a second round-trip just to re-fetch what we already
       // know, so the UI updates the instant the save actually completes.
       const updated = await mutateApi<QueueOrderItem>("/api/member/order", "POST", {
-        date: activeDate,
+        date,
         kind: draft.kind,
         variant: draft.variant,
         count: draft.count,
@@ -73,32 +70,33 @@ export default function MemberOrderPage() {
       });
       await globalMutate<MemberOrders>(
         "/api/member/order",
-        (current) => (current ? { ...current, [activeKey]: { status: "pending", order: updated } } : current),
+        (current) => (current ? { ...current, [key]: { status: "pending", order: updated } } : current),
         { revalidate: false },
       );
       toast.success("Order saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save order");
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   }
 
-  async function remove() {
-    if (activeStatus.status !== "pending") return;
-    setDeleting(true);
+  async function remove(key: "today" | "tomorrow") {
+    const status = orders![key];
+    if (status.status !== "pending") return;
+    setDeleting(key);
     try {
-      await mutateApi(`/api/member/order/${activeStatus.order._id}`, "DELETE");
+      await mutateApi(`/api/member/order/${status.order._id}`, "DELETE");
       await globalMutate<MemberOrders>(
         "/api/member/order",
-        (current) => (current ? { ...current, [activeKey]: { status: "none" } } : current),
+        (current) => (current ? { ...current, [key]: { status: "none" } } : current),
         { revalidate: false },
       );
       toast.success("Order removed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not remove order");
     } finally {
-      setDeleting(false);
+      setDeleting(null);
     }
   }
 
@@ -106,52 +104,65 @@ export default function MemberOrderPage() {
     <div className="space-y-4">
       <MarqueeBanner />
 
-      {activeStatus.status === "confirmed" ? (
-        <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
-      ) : activeStatus.status === "paired" ? (
-        <PairedNotice
-          partnerName={activeStatus.order.partnerName}
-          dateLabel={activeLabel}
-          isTomorrow={showTomorrow}
-        />
-      ) : pastCutoff && !showTomorrow ? (
+      {orders.today.status === "confirmed" ? (
+        <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" />
+      ) : orders.today.status === "paired" ? (
+        <PairedNotice partnerName={orders.today.order.partnerName} dateLabel="Today" isTomorrow={false} />
+      ) : pastCutoff ? (
         <CutoffPanel
-          showTomorrowButton
+          showTomorrowButton={!showTomorrow}
           onOrderTomorrow={() => setRevealTomorrow(true)}
           orderStage={
-            activeStatus.status === "pending"
+            orders.today.status === "pending"
               ? postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime)
               : null
           }
         />
       ) : (
         <>
-          {pastCutoff ? (
-            <p className="rounded-lg border border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
-              Today&apos;s ordering window is closed — this is for tomorrow.
-            </p>
-          ) : (
-            <div className="flex justify-end">
-              <CountdownBadge cutoffTime={settings.orderCutoffTime} reminderMinutes={settings.orderReminderMinutes} />
-            </div>
-          )}
+          <div className="flex justify-end">
+            <CountdownBadge cutoffTime={settings.orderCutoffTime} reminderMinutes={settings.orderReminderMinutes} />
+          </div>
           <OrderForm
-            key={activeDate}
-            dateLabel={activeLabel}
+            key={orders.todayDate}
+            dateLabel="Today"
             variants={settings.foodVariants}
             pricePerMeal={settings.pricePerMeal}
             currency={settings.currency}
-            existing={activeStatus.status === "pending" ? activeStatus.order : null}
+            existing={orders.today.status === "pending" ? orders.today.order : null}
             lastOrder={orders.lastOrder}
             cutoffTime={settings.orderCutoffTime}
             memberName={memberName}
-            onSubmit={submit}
-            onDelete={remove}
-            saving={saving}
-            deleting={deleting}
+            onSubmit={(draft) => submit("today", orders.todayDate, draft)}
+            onDelete={() => remove("today")}
+            saving={saving === "today"}
+            deleting={deleting === "today"}
           />
         </>
       )}
+
+      {showTomorrow &&
+        (orders.tomorrow.status === "confirmed" ? (
+          <OrderConfirmedNotice order={orders.tomorrow.order} dateLabel={tomorrowLabel} />
+        ) : orders.tomorrow.status === "paired" ? (
+          <PairedNotice partnerName={orders.tomorrow.order.partnerName} dateLabel={tomorrowLabel} isTomorrow />
+        ) : (
+          <OrderForm
+            key={orders.tomorrowDate}
+            dateLabel={tomorrowLabel}
+            variants={settings.foodVariants}
+            pricePerMeal={settings.pricePerMeal}
+            currency={settings.currency}
+            existing={orders.tomorrow.status === "pending" ? orders.tomorrow.order : null}
+            lastOrder={orders.lastOrder}
+            cutoffTime={settings.orderCutoffTime}
+            memberName={memberName}
+            onSubmit={(draft) => submit("tomorrow", orders.tomorrowDate, draft)}
+            onDelete={() => remove("tomorrow")}
+            saving={saving === "tomorrow"}
+            deleting={deleting === "tomorrow"}
+          />
+        ))}
 
       <div className="flex justify-center pt-2">
         <PushSubscribeButton />

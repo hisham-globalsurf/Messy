@@ -16,9 +16,6 @@ export function OrderConfirmedNotice({ order, dateLabel }: { order: ConfirmedOrd
           ? `Full${order.count > 1 ? ` ×${order.count}` : ""}${order.variant ? ` — ${order.variant}` : ""}`
           : `Half with ${order.partnerName}${order.variant ? ` — ${order.variant}` : ""}`}
       </p>
-      <p className="text-sm text-muted-foreground">
-        Your order has been confirmed by the admin. Please contact them for any changes.
-      </p>
     </div>
   );
 }
