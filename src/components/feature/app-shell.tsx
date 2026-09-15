@@ -20,6 +20,7 @@ import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { SendNotificationDialog } from "@/components/feature/send-notification-dialog";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useSettings } from "@/lib/client/hooks";
+import { useAdminRealtime } from "@/lib/client/useAdminRealtime";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -36,6 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: settings } = useSettings();
   const [loggingOut, setLoggingOut] = useState(false);
   const [notifyOpen, setNotifyOpen] = useState(false);
+
+  // Live report submissions while any admin page is open — see useAdminRealtime for the Ably
+  // wiring and the plain-fetch fallback it relies on when navigating to the Reports tab directly.
+  useAdminRealtime();
 
   async function logout() {
     setLoggingOut(true);

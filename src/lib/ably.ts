@@ -47,6 +47,23 @@ export async function publishNotificationsChangedForAll(): Promise<void> {
   }
 }
 
+/** The admin app has no per-admin id to scope a channel to (unlike a member's Person id), and
+ * every admin session should see the same thing, so this is one shared broadcast channel — same
+ * shape as NOTIFICATIONS_BROADCAST_CHANNEL but for the admin side. */
+export const REPORTS_BROADCAST_CHANNEL = "reports:broadcast";
+
+/** Tells every open admin tab to refetch the reports list — fired right after a member submits
+ * one, so it shows up on the Reports tab without waiting for a manual refresh. Same best-effort
+ * contract as publishOrderUpdate: a failure here never fails the report submission itself. */
+export async function publishReportCreated(): Promise<void> {
+  try {
+    const channel = getRestClient().channels.get(REPORTS_BROADCAST_CHANNEL);
+    await channel.publish("report-created", {});
+  } catch (err) {
+    console.error("Ably broadcast publish failed:", err);
+  }
+}
+
 /** Tells just this one member's open tab(s) to refetch in-app notifications — used when a
  * notification targets specific people rather than everyone. Reuses the member's existing
  * personal channel (already granted for order updates), so no extra token capability is needed. */
