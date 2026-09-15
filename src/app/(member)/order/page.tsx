@@ -106,7 +106,15 @@ export default function MemberOrderPage() {
     <div className="space-y-4">
       <MarqueeBanner />
 
-      {pastCutoff && !showTomorrow ? (
+      {activeStatus.status === "confirmed" ? (
+        <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
+      ) : activeStatus.status === "paired" ? (
+        <PairedNotice
+          partnerName={activeStatus.order.partnerName}
+          dateLabel={activeLabel}
+          isTomorrow={showTomorrow}
+        />
+      ) : pastCutoff && !showTomorrow ? (
         <CutoffPanel
           showTomorrowButton
           onOrderTomorrow={() => setRevealTomorrow(true)}
@@ -115,14 +123,6 @@ export default function MemberOrderPage() {
               ? postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime)
               : null
           }
-        />
-      ) : activeStatus.status === "confirmed" ? (
-        <OrderConfirmedNotice order={activeStatus.order} dateLabel={activeLabel} />
-      ) : activeStatus.status === "paired" ? (
-        <PairedNotice
-          partnerName={activeStatus.order.partnerName}
-          dateLabel={activeLabel}
-          isTomorrow={showTomorrow}
         />
       ) : (
         <>

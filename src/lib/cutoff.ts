@@ -50,22 +50,29 @@ export function minutesUntilCutoffToday(cutoffTime: string): number {
   return hours * 60 + minutes - nowMinutes;
 }
 
-function toMinutesOfDay(time: string): number {
+/** Parses "HH:mm" to minutes since midnight, or null if `time` is missing/malformed —
+ * callers should treat null as "stage unknown" rather than throw, since older Settings
+ * documents may predate a given time field. */
+function toMinutesOfDay(time: string | undefined | null): number | null {
+  if (!time) return null;
   const [hours, minutes] = time.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
   return hours * 60 + minutes;
 }
 
 /** Which post-cutoff message a member with a pending order for today should see: "confirmed"
  * until `confirmedUntil`, then "delivered" until `deliveredUntil` (both "HH:mm", IST), then
- * nothing once `deliveredUntil` has passed. */
+ * nothing once `deliveredUntil` has passed (or if either time is missing/malformed). */
 export function postCutoffOrderStage(
-  confirmedUntil: string,
-  deliveredUntil: string,
+  confirmedUntil: string | undefined | null,
+  deliveredUntil: string | undefined | null,
 ): "confirmed" | "delivered" | null {
+  const confirmedMinutes = toMinutesOfDay(confirmedUntil);
+  const deliveredMinutes = toMinutesOfDay(deliveredUntil);
   const d = istNow();
   const nowMinutes = d.getUTCHours() * 60 + d.getUTCMinutes();
-  if (nowMinutes < toMinutesOfDay(confirmedUntil)) return "confirmed";
-  if (nowMinutes < toMinutesOfDay(deliveredUntil)) return "delivered";
+  if (confirmedMinutes !== null && nowMinutes < confirmedMinutes) return "confirmed";
+  if (deliveredMinutes !== null && nowMinutes < deliveredMinutes) return "delivered";
   return null;
 }
 

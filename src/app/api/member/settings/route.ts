@@ -6,7 +6,9 @@ import { memberRoute } from "@/lib/memberApi";
 /** Member-safe subset of settings — deliberately omits supplierPhone. */
 export const GET = memberRoute(async () => {
   await connectDB();
-  const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
+  // Not .lean(): schema defaults (e.g. orderConfirmedUntilTime) only apply on a hydrated
+  // document, and older Settings docs predate those fields being stored.
+  const settings = await SettingsModel.findOne({ key: "singleton" });
   if (!settings) throw new ApiError(500, "Settings not found");
 
   return ok({
