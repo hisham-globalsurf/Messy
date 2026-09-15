@@ -11,6 +11,7 @@ import { CountdownBadge } from "@/components/feature/member/countdown-badge";
 import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
 import { PushSubscribeButton } from "@/components/feature/member/push-subscribe-button";
 import { MessClosedNotice } from "@/components/feature/member/mess-closed-notice";
+import { Button } from "@/components/ui/button";
 import { useMemberName } from "@/components/feature/member/member-session-context";
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
@@ -54,6 +55,7 @@ export default function MemberOrderPage() {
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
   const tomorrowLabel = `Tomorrow — ${formatDate(orders.tomorrowDate)}`;
+  const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime);
 
   async function submit(key: "today" | "tomorrow", date: string, draft: OrderDraft) {
     setSaving(key);
@@ -105,18 +107,28 @@ export default function MemberOrderPage() {
       <MarqueeBanner />
 
       {orders.today.status === "confirmed" ? (
-        <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" />
+        <>
+          <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" stage={todayStage} />
+          {pastCutoff && !showTomorrow && (
+            <div className="flex justify-center">
+              <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
+            </div>
+          )}
+        </>
       ) : orders.today.status === "paired" ? (
-        <PairedNotice partnerName={orders.today.order.partnerName} dateLabel="Today" isTomorrow={false} />
+        <>
+          <PairedNotice partnerName={orders.today.order.partnerName} dateLabel="Today" isTomorrow={false} />
+          {pastCutoff && !showTomorrow && (
+            <div className="flex justify-center">
+              <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
+            </div>
+          )}
+        </>
       ) : pastCutoff ? (
         <CutoffPanel
           showTomorrowButton={!showTomorrow}
           onOrderTomorrow={() => setRevealTomorrow(true)}
-          orderStage={
-            orders.today.status === "pending"
-              ? postCutoffOrderStage(settings.orderConfirmedUntilTime, settings.orderDeliveredUntilTime)
-              : null
-          }
+          orderStage={orders.today.status === "pending" ? todayStage : null}
         />
       ) : (
         <>
