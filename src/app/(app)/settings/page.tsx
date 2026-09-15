@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeInput } from "@/components/ui/time-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -321,13 +322,11 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
         <form onSubmit={save} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="order-cutoff">Cutoff time (IST)</Label>
-            <Input
+            <TimeInput
               id="order-cutoff"
-              type="time"
               value={cutoff}
               onChange={(e) => setCutoff(e.target.value)}
               required
-              className="w-40"
             />
           </div>
           <div className="space-y-2">
@@ -346,24 +345,20 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
           <div className="flex flex-wrap gap-4">
             <div className="space-y-2">
               <Label htmlFor="order-confirmed-until">Show &quot;order confirmed&quot; until (IST)</Label>
-              <Input
+              <TimeInput
                 id="order-confirmed-until"
-                type="time"
                 value={confirmedUntil}
                 onChange={(e) => setConfirmedUntil(e.target.value)}
                 required
-                className="w-40"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="order-delivered-until">Then &quot;order delivered&quot; until (IST)</Label>
-              <Input
+              <TimeInput
                 id="order-delivered-until"
-                type="time"
                 value={deliveredUntil}
                 onChange={(e) => setDeliveredUntil(e.target.value)}
                 required
-                className="w-40"
               />
             </div>
           </div>
