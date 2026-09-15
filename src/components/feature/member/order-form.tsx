@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { CheckCircle2, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -74,7 +74,10 @@ export function OrderForm({
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{dateLabel}</h2>
         {existing ? (
-          <span className="text-xs text-muted-foreground">Saved — you can still edit</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400">
+            <CheckCircle2 className="size-3.5" />
+            Order placed — editable
+          </span>
         ) : (
           lastOrder && <span className="text-xs text-muted-foreground">Filled in from your last order</span>
         )}
