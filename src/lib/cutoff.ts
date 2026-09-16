@@ -50,6 +50,16 @@ export function minutesUntilCutoffToday(cutoffTime: string): number {
   return hours * 60 + minutes - nowMinutes;
 }
 
+/** Milliseconds from now until `hhmm` ("HH:mm", IST) occurs today — negative once it has
+ * passed. Second/millisecond-precise (unlike minutesUntilCutoffToday), for scheduling a timer
+ * to fire exactly at that instant rather than polling for it. */
+export function msUntilIstTime(hhmm: string): number {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  const d = istNow();
+  const target = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hours, minutes, 0, 0);
+  return target - d.getTime();
+}
+
 /** Parses "HH:mm" to minutes since midnight, or null if `time` is missing/malformed —
  * callers should treat null as "stage unknown" rather than throw, since older Settings
  * documents may predate a given time field. */

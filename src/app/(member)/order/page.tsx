@@ -16,7 +16,8 @@ import { useMemberName } from "@/components/feature/member/member-session-contex
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberOrders, useMemberSettings, type MemberOrders } from "@/lib/client/hooks";
-import { isPastCutoffToday, postCutoffOrderStage } from "@/lib/cutoff";
+import { useScheduledRerender } from "@/lib/client/useScheduledRerender";
+import { isPastCutoffToday, msUntilIstTime, postCutoffOrderStage } from "@/lib/cutoff";
 import { isMessClosedOn } from "@/lib/messClosure";
 import { formatDate } from "@/lib/format";
 import type { QueueOrderItem } from "@/types";
@@ -28,6 +29,14 @@ export default function MemberOrderPage() {
   const [revealTomorrow, setRevealTomorrow] = useState(false);
   const [saving, setSaving] = useState<"today" | "tomorrow" | null>(null);
   const [deleting, setDeleting] = useState<"today" | "tomorrow" | null>(null);
+  // pastCutoff/todayStage below are pure clock checks, not derived from fetched data — without
+  // this, an already-open tab wouldn't flip from the order form to the cutoff/confirmed view
+  // until something else (a refocus, an unrelated Ably event) happened to trigger a re-render.
+  // Scheduled for the exact moment each passes rather than polled, so it's both instant and idle
+  // the rest of the day.
+  useScheduledRerender(
+    settings ? [msUntilIstTime(settings.orderCutoffTime), msUntilIstTime(settings.orderConfirmedUntilTime)] : [],
+  );
 
   if (settingsLoading || ordersLoading || !settings || !orders) {
     return (
