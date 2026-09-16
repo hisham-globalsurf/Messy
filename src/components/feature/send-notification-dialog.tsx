@@ -133,14 +133,16 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
           <div className="space-y-1.5">
             <Label className="text-sm font-normal text-muted-foreground">Recipients</Label>
             <PersonMultiSelect selectedIds={recipientIds} onChange={setRecipientIds} />
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={selectWithoutOrder}
               disabled={loadingUnordered}
-              className="cursor-pointer text-xs font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
             >
-              {loadingUnordered ? "Checking…" : "Select members without an order today"}
-            </button>
+              {loadingUnordered && <Spinner />}
+              {loadingUnordered ? "Checking…" : "Non-ordered Users"}
+            </Button>
           </div>
         </div>
         <DialogFooter className="sm:justify-between">
