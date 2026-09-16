@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { mutateApi } from "@/lib/client/fetcher";
+import { fetcher, mutateApi } from "@/lib/client/fetcher";
 
 interface Props {
   open: boolean;
@@ -42,6 +42,24 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
   const [sending, setSending] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [loadingUnordered, setLoadingUnordered] = useState(false);
+
+  async function selectWithoutOrder() {
+    setLoadingUnordered(true);
+    try {
+      const { personIds } = await fetcher<{ personIds: string[] }>("/api/persons/without-order");
+      setRecipientIds(personIds);
+      toast.success(
+        personIds.length > 0
+          ? `${personIds.length} member${personIds.length === 1 ? "" : "s"} without an order today`
+          : "Everyone has ordered today",
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load members without an order");
+    } finally {
+      setLoadingUnordered(false);
+    }
+  }
 
   async function send() {
     setSending(true);
@@ -115,6 +133,14 @@ export function SendNotificationDialog({ open, onOpenChange }: Props) {
           <div className="space-y-1.5">
             <Label className="text-sm font-normal text-muted-foreground">Recipients</Label>
             <PersonMultiSelect selectedIds={recipientIds} onChange={setRecipientIds} />
+            <button
+              type="button"
+              onClick={selectWithoutOrder}
+              disabled={loadingUnordered}
+              className="cursor-pointer text-xs font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              {loadingUnordered ? "Checking…" : "Select members without an order today"}
+            </button>
           </div>
         </div>
         <DialogFooter className="sm:justify-between">
