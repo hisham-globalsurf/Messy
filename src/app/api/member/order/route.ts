@@ -39,8 +39,10 @@ export const GET = memberRoute(async (session) => {
 
   const today = await dateOrderStatus(session.sub, session.name, toUtcDay(todayDate));
   const tomorrow = await dateOrderStatus(session.sub, session.name, toUtcDay(tomorrowDate));
+  // Either date's form (not just both) can need this to prefill — e.g. today's already ordered
+  // but tomorrow isn't yet, which is the common case once "Order for tomorrow" opens up.
   const lastOrder =
-    today.status === "none" && tomorrow.status === "none" ? await findLastOrderDraft(session.name) : null;
+    today.status === "none" || tomorrow.status === "none" ? await findLastOrderDraft(session.name) : null;
 
   return ok({ today, tomorrow, todayDate, tomorrowDate, lastOrder });
 });

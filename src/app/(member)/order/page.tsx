@@ -84,9 +84,9 @@ export default function MemberOrderPage() {
         (current) => (current ? { ...current, [key]: { status: "pending", order: updated } } : current),
         { revalidate: false },
       );
-      toast.success("Order saved");
+      toast.success("Order placed");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save order");
+      toast.error(err instanceof Error ? err.message : "Could not place order");
     } finally {
       setSaving(null);
     }
