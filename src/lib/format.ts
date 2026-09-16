@@ -82,3 +82,16 @@ export function formatTime12h(hhmm: string): string {
   const twelveHour = hours % 12 === 0 ? 12 : hours % 12;
   return `${twelveHour}:${String(minutes).padStart(2, "0")} ${period}`;
 }
+
+/** One-line description of a full/half order, e.g. "Full ×2 — Non-veg" or
+ * "Half with Priya — Egg" — shared by anywhere an order needs a compact text summary. */
+export function formatOrderSummary(order: {
+  kind: "full" | "half";
+  variant: string | null;
+  count: number;
+  partnerName: string | null;
+}): string {
+  return order.kind === "full"
+    ? `Full${order.count > 1 ? ` ×${order.count}` : ""}${order.variant ? ` — ${order.variant}` : ""}`
+    : `Half with ${order.partnerName}${order.variant ? ` — ${order.variant}` : ""}`;
+}

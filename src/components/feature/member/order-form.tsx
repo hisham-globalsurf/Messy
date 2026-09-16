@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Minus, Plus } from "lucide-react";
+import { CheckCircle2, Minus, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { MemberPartnerPicker } from "@/components/feature/member/member-partner-picker";
-import { formatMoney, formatTime12h } from "@/lib/format";
+import { formatMoney, formatOrderSummary, formatTime12h } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { FoodVariant, QueueOrderItem } from "@/types";
 
@@ -42,6 +42,18 @@ interface Props {
   deleting: boolean;
 }
 
+/** A collapsible height wrapper — animates smoothly between 0 and its natural content height
+ * via the CSS grid-rows trick (no JS height measuring needed). */
+function Collapsible({ open, className, children }: { open: boolean; className?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}
+    >
+      <div className={cn("min-h-0 overflow-hidden", className)}>{children}</div>
+    </div>
+  );
+}
+
 export function OrderForm({
   dateLabel,
   variants,
@@ -61,6 +73,10 @@ export function OrderForm({
   const [kind, setKind] = useState<"full" | "half">(seed?.kind ?? "full");
   const [count, setCount] = useState(seed?.count ?? 1);
   const [partnerName, setPartnerName] = useState<string | null>(seed?.partnerName ?? null);
+  // Collapsed to a one-line summary once an order exists, unless the member clicked "Edit" —
+  // deleting drops back to the full form on its own since there's nothing left to summarize.
+  const [forceEdit, setForceEdit] = useState(false);
+  const expanded = forceEdit || !existing;
 
   const canSubmit = kind === "full" || !!partnerName;
   const unitPrice = variant ? (variants.find((v) => v.name === variant)?.price ?? pricePerMeal) : pricePerMeal;
@@ -68,10 +84,11 @@ export function OrderForm({
 
   async function submit() {
     await onSubmit({ kind, variant, count, partnerName });
+    setForceEdit(false);
   }
 
   return (
-    <div className="space-y-5 rounded-xl border p-4">
+    <div className="space-y-4 rounded-xl border p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">{dateLabel}</h2>
         {existing ? (
@@ -84,112 +101,131 @@ export function OrderForm({
         )}
       </div>
 
-      {variants.length > 0 && (
-        <div className="space-y-2">
-          <Label>Food</Label>
-          <div className="flex flex-wrap gap-2">
-            {variants.map((v) => (
-              <button
-                key={v.name}
-                type="button"
-                aria-pressed={variant === v.name}
-                onClick={() => setVariant(v.name)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                  variant === v.name
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "hover:bg-muted",
-                )}
-              >
-                {v.name}
-                <span className={cn("text-xs", variant === v.name ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                  {formatMoney(v.price, currency)}
-                </span>
-              </button>
-            ))}
+      {existing && (
+        <Collapsible open={!expanded}>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-sm font-medium">{formatOrderSummary(existing)}</p>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" size="sm" onClick={() => setForceEdit(true)}>
+                <Pencil />
+                Edit
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onDelete} disabled={deleting}>
+                {deleting ? <Spinner /> : "Delete"}
+              </Button>
+            </div>
           </div>
-        </div>
+        </Collapsible>
       )}
 
-      <div className="space-y-2">
-        <Label>Full or half?</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            aria-pressed={kind === "full"}
-            onClick={() => setKind("full")}
-            className={cn(
-              "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
-              kind === "full" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
-            )}
-          >
-            Full
-          </button>
-          <button
-            type="button"
-            aria-pressed={kind === "half"}
-            onClick={() => setKind("half")}
-            className={cn(
-              "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
-              kind === "half" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
-            )}
-          >
-            Half
-          </button>
-        </div>
-      </div>
-
-      {kind === "full" ? (
-        <div className="space-y-2">
-          <Label>How many?</Label>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCount((c) => Math.max(1, c - 1))}
-              disabled={count <= 1}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Decrease count"
-            >
-              <Minus className="size-4" />
-            </button>
-            <span className="w-6 text-center text-base font-semibold tabular-nums">{count}</span>
-            <button
-              type="button"
-              onClick={() => setCount((c) => Math.min(20, c + 1))}
-              disabled={count >= 20}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Increase count"
-            >
-              <Plus className="size-4" />
-            </button>
+      <Collapsible open={expanded} className="space-y-5">
+        {variants.length > 0 && (
+          <div className="space-y-2">
+            <Label>Food</Label>
+            <div className="flex flex-wrap gap-2">
+              {variants.map((v) => (
+                <button
+                  key={v.name}
+                  type="button"
+                  aria-pressed={variant === v.name}
+                  onClick={() => setVariant(v.name)}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    variant === v.name
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "hover:bg-muted",
+                  )}
+                >
+                  {v.name}
+                  <span className={cn("text-xs", variant === v.name ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                    {formatMoney(v.price, currency)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <Label>Pair with</Label>
-          <MemberPartnerPicker value={partnerName} onChange={setPartnerName} excludeName={memberName} />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
-        <span className="text-xs text-muted-foreground">Estimated cost</span>
-        <span className="text-sm font-semibold tabular-nums">{formatMoney(estimate, currency)}</span>
-      </div>
-
-      <div className="flex gap-2 pt-1">
-        <Button className="flex-1" onClick={submit} disabled={!canSubmit || saving || deleting}>
-          {saving && <Spinner />}
-          {saving ? "Saving…" : existing ? "Save changes" : "Submit"}
-        </Button>
-        {existing && (
-          <Button variant="ghost" onClick={onDelete} disabled={saving || deleting}>
-            {deleting ? <Spinner /> : "Delete"}
-          </Button>
         )}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        NB: Daily order will close before {formatTime12h(cutoffTime)}.
-      </p>
+
+        <div className="space-y-2">
+          <Label>Full or half?</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              aria-pressed={kind === "full"}
+              onClick={() => setKind("full")}
+              className={cn(
+                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
+                kind === "full" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
+              )}
+            >
+              Full
+            </button>
+            <button
+              type="button"
+              aria-pressed={kind === "half"}
+              onClick={() => setKind("half")}
+              className={cn(
+                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
+                kind === "half" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
+              )}
+            >
+              Half
+            </button>
+          </div>
+        </div>
+
+        {kind === "full" ? (
+          <div className="space-y-2">
+            <Label>How many?</Label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCount((c) => Math.max(1, c - 1))}
+                disabled={count <= 1}
+                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Decrease count"
+              >
+                <Minus className="size-4" />
+              </button>
+              <span className="w-6 text-center text-base font-semibold tabular-nums">{count}</span>
+              <button
+                type="button"
+                onClick={() => setCount((c) => Math.min(20, c + 1))}
+                disabled={count >= 20}
+                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Increase count"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>Pair with</Label>
+            <MemberPartnerPicker value={partnerName} onChange={setPartnerName} excludeName={memberName} />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Estimated cost</span>
+          <span className="text-sm font-semibold tabular-nums">{formatMoney(estimate, currency)}</span>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <Button className="flex-1" onClick={submit} disabled={!canSubmit || saving || deleting}>
+            {saving && <Spinner />}
+            {saving ? "Saving…" : existing ? "Save changes" : "Submit"}
+          </Button>
+          {existing && (
+            <Button variant="ghost" onClick={onDelete} disabled={saving || deleting}>
+              {deleting ? <Spinner /> : "Delete"}
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          NB: Daily order will close before {formatTime12h(cutoffTime)}.
+        </p>
+      </Collapsible>
     </div>
   );
 }

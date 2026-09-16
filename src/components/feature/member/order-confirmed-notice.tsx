@@ -1,5 +1,6 @@
 import { CheckCircle2, UtensilsCrossed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatOrderSummary } from "@/lib/format";
 import type { ConfirmedOrderItem } from "@/types";
 
 interface Props {
@@ -30,11 +31,7 @@ export function OrderConfirmedNotice({ order, dateLabel, stage }: Props) {
           </Badge>
         )}
       </div>
-      <p className="text-sm font-medium">
-        {order.kind === "full"
-          ? `Full${order.count > 1 ? ` ×${order.count}` : ""}${order.variant ? ` — ${order.variant}` : ""}`
-          : `Half with ${order.partnerName}${order.variant ? ` — ${order.variant}` : ""}`}
-      </p>
+      <p className="text-sm font-medium">{formatOrderSummary(order)}</p>
     </div>
   );
 }
