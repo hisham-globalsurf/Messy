@@ -1,17 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { CalendarDays, LogOut, UtensilsCrossed } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { CalendarDays, Home, Settings as SettingsIcon, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { MemberSessionProvider } from "@/components/feature/member/member-session-context";
 import { HistorySheet } from "@/components/feature/member/history-sheet";
 import { NotificationBell } from "@/components/feature/member/notification-bell";
-import { ReportIssueButton } from "@/components/feature/member/report-issue-button";
-import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberSettings } from "@/lib/client/hooks";
 import { useMemberRealtime } from "@/lib/client/useMemberRealtime";
 
@@ -24,28 +20,15 @@ export function MemberShell({
   personId: string;
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const pathname = usePathname();
+  const isSettingsPage = pathname === "/order/settings";
   const { data: settings } = useMemberSettings();
-  const [loggingOut, setLoggingOut] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Live order/notification updates while this tab is open (e.g. admin accepts the order while
   // the member is looking at it) — see useMemberRealtime for the Ably wiring and the
   // revalidate-on-focus fallback it relies on if Ably is unreachable.
   useMemberRealtime(personId);
-
-  async function logout() {
-    setLoggingOut(true);
-    try {
-      await mutateApi("/api/member/logout", "POST");
-      toast.success("Signed out");
-      router.replace("/order/login");
-      router.refresh();
-    } catch {
-      toast.error("Could not sign out");
-      setLoggingOut(false);
-    }
-  }
 
   return (
     <MemberSessionProvider name={name} personId={personId}>
@@ -64,9 +47,10 @@ export function MemberShell({
                 <CalendarDays className="size-4" />
               </Button>
               <NotificationBell />
-              <ThemeToggle />
-              <Button variant="ghost" size="icon" aria-label="Sign out" onClick={logout} disabled={loggingOut}>
-                {loggingOut ? <Spinner /> : <LogOut className="size-4" />}
+              <Button asChild variant="ghost" size="icon" aria-label={isSettingsPage ? "Back to order" : "Settings"}>
+                <Link href={isSettingsPage ? "/order" : "/order/settings"}>
+                  {isSettingsPage ? <Home className="size-4" /> : <SettingsIcon className="size-4" />}
+                </Link>
               </Button>
             </div>
           </div>
@@ -75,7 +59,6 @@ export function MemberShell({
         <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-10 pt-5">{children}</main>
 
         <HistorySheet open={historyOpen} onOpenChange={setHistoryOpen} currency={settings?.currency ?? "₹"} />
-        <ReportIssueButton />
       </div>
     </MemberSessionProvider>
   );

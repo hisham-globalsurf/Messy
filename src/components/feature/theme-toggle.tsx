@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import type { VariantProps } from "class-variance-authority";
 import { Monitor, Moon, Sun } from "lucide-react";
 import {
   DropdownMenu,
@@ -8,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 const OPTIONS = [
   { value: "light", label: "Light", icon: Sun },
@@ -16,13 +17,18 @@ const OPTIONS = [
   { value: "system", label: "System", icon: Monitor },
 ] as const;
 
-export function ThemeToggle() {
+interface Props {
+  variant?: VariantProps<typeof buttonVariants>["variant"];
+  className?: string;
+}
+
+export function ThemeToggle({ variant = "ghost", className }: Props) {
   const { theme, setTheme } = useTheme();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Toggle theme">
+        <Button variant={variant} size="icon" aria-label="Toggle theme" className={className}>
           <Sun className="size-4 dark:hidden" />
           <Moon className="hidden size-4 dark:block" />
         </Button>
