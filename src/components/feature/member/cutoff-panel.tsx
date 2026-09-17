@@ -36,7 +36,11 @@ export function CutoffPanel({ showTomorrowButton, onOrderTomorrow, orderStage }:
           </div>
         </>
       )}
-      {showTomorrowButton && <Button onClick={onOrderTomorrow}>Order for tomorrow</Button>}
+      {showTomorrowButton && (
+        <Button onClick={onOrderTomorrow} className="hidden sm:inline-flex">
+          Order for tomorrow
+        </Button>
+      )}
     </div>
   );
 }

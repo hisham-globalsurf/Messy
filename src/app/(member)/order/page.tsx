@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { mutate as globalMutate } from "swr";
 import { toast } from "sonner";
+import { CalendarPlus } from "lucide-react";
 import { OrderForm, type OrderDraft } from "@/components/feature/member/order-form";
 import { OrderConfirmedNotice } from "@/components/feature/member/order-confirmed-notice";
 import { PairedNotice } from "@/components/feature/member/paired-notice";
@@ -12,6 +13,7 @@ import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
 import { PushSubscribeButton } from "@/components/feature/member/push-subscribe-button";
 import { MessClosedNotice } from "@/components/feature/member/mess-closed-notice";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useMemberName } from "@/components/feature/member/member-session-context";
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
@@ -27,6 +29,10 @@ export default function MemberOrderPage() {
   const { data: settings, isLoading: settingsLoading } = useMemberSettings();
   const { data: orders, isLoading: ordersLoading, error } = useMemberOrders();
   const [revealTomorrow, setRevealTomorrow] = useState(false);
+  // On phone, the tomorrow order lives in a bottom drawer opened via a thumb-reachable
+  // fixed button, separate from revealTomorrow (which also drives the desktop inline reveal) so
+  // the drawer can be reopened after closing without re-triggering the desktop layout.
+  const [tomorrowSheetOpen, setTomorrowSheetOpen] = useState(false);
   const [saving, setSaving] = useState<"today" | "tomorrow" | null>(null);
   const [deleting, setDeleting] = useState<"today" | "tomorrow" | null>(null);
   // pastCutoff/todayStage below are pure clock checks, not derived from fetched data — without
@@ -65,6 +71,11 @@ export default function MemberOrderPage() {
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
   const tomorrowLabel = `Tomorrow — ${formatDate(orders.tomorrowDate)}`;
   const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime);
+
+  function openTomorrowSheet() {
+    setRevealTomorrow(true);
+    setTomorrowSheetOpen(true);
+  }
 
   async function submit(key: "today" | "tomorrow", date: string, draft: OrderDraft) {
     setSaving(key);
@@ -111,6 +122,29 @@ export default function MemberOrderPage() {
     }
   }
 
+  const tomorrowContent =
+    orders.tomorrow.status === "confirmed" ? (
+      <OrderConfirmedNotice order={orders.tomorrow.order} dateLabel={tomorrowLabel} />
+    ) : orders.tomorrow.status === "paired" ? (
+      <PairedNotice partnerName={orders.tomorrow.order.partnerName} dateLabel={tomorrowLabel} isTomorrow />
+    ) : (
+      <OrderForm
+        key={orders.tomorrowDate}
+        dateLabel={tomorrowLabel}
+        variants={settings.foodVariants}
+        pricePerMeal={settings.pricePerMeal}
+        currency={settings.currency}
+        existing={orders.tomorrow.status === "pending" ? orders.tomorrow.order : null}
+        lastOrder={orders.lastOrder}
+        cutoffTime={settings.orderCutoffTime}
+        memberName={memberName}
+        onSubmit={(draft) => submit("tomorrow", orders.tomorrowDate, draft)}
+        onDelete={() => remove("tomorrow")}
+        saving={saving === "tomorrow"}
+        deleting={deleting === "tomorrow"}
+      />
+    );
+
   return (
     <div className="space-y-4">
       <MarqueeBanner />
@@ -119,7 +153,7 @@ export default function MemberOrderPage() {
         <>
           <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" stage={todayStage} />
           {pastCutoff && !showTomorrow && (
-            <div className="flex justify-center">
+            <div className="hidden justify-center sm:flex">
               <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
             </div>
           )}
@@ -128,7 +162,7 @@ export default function MemberOrderPage() {
         <>
           <PairedNotice partnerName={orders.today.order.partnerName} dateLabel="Today" isTomorrow={false} />
           {pastCutoff && !showTomorrow && (
-            <div className="flex justify-center">
+            <div className="hidden justify-center sm:flex">
               <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
             </div>
           )}
@@ -162,28 +196,31 @@ export default function MemberOrderPage() {
         </>
       )}
 
-      {showTomorrow &&
-        (orders.tomorrow.status === "confirmed" ? (
-          <OrderConfirmedNotice order={orders.tomorrow.order} dateLabel={tomorrowLabel} />
-        ) : orders.tomorrow.status === "paired" ? (
-          <PairedNotice partnerName={orders.tomorrow.order.partnerName} dateLabel={tomorrowLabel} isTomorrow />
-        ) : (
-          <OrderForm
-            key={orders.tomorrowDate}
-            dateLabel={tomorrowLabel}
-            variants={settings.foodVariants}
-            pricePerMeal={settings.pricePerMeal}
-            currency={settings.currency}
-            existing={orders.tomorrow.status === "pending" ? orders.tomorrow.order : null}
-            lastOrder={orders.lastOrder}
-            cutoffTime={settings.orderCutoffTime}
-            memberName={memberName}
-            onSubmit={(draft) => submit("tomorrow", orders.tomorrowDate, draft)}
-            onDelete={() => remove("tomorrow")}
-            saving={saving === "tomorrow"}
-            deleting={deleting === "tomorrow"}
-          />
-        ))}
+      {showTomorrow && <div className="hidden sm:block">{tomorrowContent}</div>}
+
+      {/* Phone only: a thumb-reachable fixed button (bottom-right, within easy thumb reach while
+          holding the phone one-handed) that opens tomorrow's order card as a bottom drawer,
+          instead of the desktop inline reveal above. */}
+      {pastCutoff && (
+        <button
+          type="button"
+          onClick={openTomorrowSheet}
+          aria-label="Order for tomorrow"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg sm:hidden"
+        >
+          <CalendarPlus className="size-4" />
+          Tomorrow
+        </button>
+      )}
+
+      <Sheet open={tomorrowSheetOpen} onOpenChange={setTomorrowSheetOpen}>
+        <SheetContent side="bottom" className="mx-auto flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-t-2xl sm:hidden">
+          <SheetHeader>
+            <SheetTitle>{tomorrowLabel}</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">{tomorrowContent}</div>
+        </SheetContent>
+      </Sheet>
 
       <div className="flex justify-center pt-2">
         <PushSubscribeButton />
