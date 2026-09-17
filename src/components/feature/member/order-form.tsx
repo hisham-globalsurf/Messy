@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Minus, Pencil, Plus } from "lucide-react";
+import { CheckCircle2, Minus, Pencil, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -89,16 +89,30 @@ export function OrderForm({
 
   return (
     <div className="space-y-4 rounded-xl border p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{dateLabel}</h2>
-        {existing ? (
-          <Badge variant="info" className="h-auto gap-1 px-2.5 py-1">
-            <CheckCircle2 />
-            Order placed — editable
-          </Badge>
-        ) : (
-          lastOrder && <span className="text-xs text-muted-foreground">Filled in from your last order</span>
-        )}
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-sm font-semibold max-[370px]:text-[13px]">{dateLabel}</h2>
+        <div className="flex shrink-0 items-center gap-2">
+          {existing ? (
+            <Badge variant="info" className="h-auto gap-1 px-2.5 py-1">
+              <CheckCircle2 />
+              Order placed — editable
+            </Badge>
+          ) : (
+            lastOrder && (
+              <span className="text-xs text-muted-foreground max-[370px]:text-[11px]">Filled in from your last order</span>
+            )
+          )}
+          {existing && expanded && (
+            <button
+              type="button"
+              onClick={() => setForceEdit(false)}
+              aria-label="Close editing"
+              className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm transition-colors hover:bg-primary/15"
+            >
+              <X className="size-3.5 stroke-[2.5]" />
+            </button>
+          )}
+        </div>
       </div>
 
       {existing && (
@@ -106,11 +120,22 @@ export function OrderForm({
           <div className="flex items-center justify-between gap-2 pt-1">
             <p className="text-sm font-medium">{formatOrderSummary(existing)}</p>
             <div className="flex shrink-0 gap-2">
-              <Button variant="outline" size="sm" onClick={() => setForceEdit(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setForceEdit(true)}
+                className="max-[370px]:h-6 max-[370px]:px-2 max-[370px]:text-[13px]"
+              >
                 <Pencil />
                 Edit
               </Button>
-              <Button variant="ghost" size="sm" onClick={onDelete} disabled={deleting}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                disabled={deleting}
+                className="max-[370px]:h-6 max-[370px]:px-2 max-[370px]:text-[13px]"
+              >
                 {deleting ? <Spinner /> : "Delete"}
               </Button>
             </div>
@@ -130,14 +155,19 @@ export function OrderForm({
                   aria-pressed={variant === v.name}
                   onClick={() => setVariant(v.name)}
                   className={cn(
-                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    "flex cursor-pointer items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors max-[370px]:px-2.5 max-[370px]:py-1 max-[370px]:text-[13px]",
                     variant === v.name
                       ? "border-primary bg-primary text-primary-foreground"
                       : "hover:bg-muted",
                   )}
                 >
                   {v.name}
-                  <span className={cn("text-xs", variant === v.name ? "text-primary-foreground/80" : "text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "text-xs max-[370px]:text-[11px]",
+                      variant === v.name ? "text-primary-foreground/80" : "text-muted-foreground",
+                    )}
+                  >
                     {formatMoney(v.price, currency)}
                   </span>
                 </button>
@@ -154,7 +184,7 @@ export function OrderForm({
               aria-pressed={kind === "full"}
               onClick={() => setKind("full")}
               className={cn(
-                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
+                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors max-[370px]:py-2 max-[370px]:text-[13px]",
                 kind === "full" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
               )}
             >
@@ -165,7 +195,7 @@ export function OrderForm({
               aria-pressed={kind === "half"}
               onClick={() => setKind("half")}
               className={cn(
-                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors",
+                "cursor-pointer rounded-lg border py-2.5 text-sm font-medium transition-colors max-[370px]:py-2 max-[370px]:text-[13px]",
                 kind === "half" ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
               )}
             >
@@ -182,20 +212,20 @@ export function OrderForm({
                 type="button"
                 onClick={() => setCount((c) => Math.max(1, c - 1))}
                 disabled={count <= 1}
-                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40 max-[370px]:size-8"
                 aria-label="Decrease count"
               >
-                <Minus className="size-4" />
+                <Minus className="size-4 max-[370px]:size-3.5" />
               </button>
-              <span className="w-6 text-center text-base font-semibold tabular-nums">{count}</span>
+              <span className="w-6 text-center text-base font-semibold tabular-nums max-[370px]:text-[15px]">{count}</span>
               <button
                 type="button"
                 onClick={() => setCount((c) => Math.min(20, c + 1))}
                 disabled={count >= 20}
-                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-9 cursor-pointer items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40 max-[370px]:size-8"
                 aria-label="Increase count"
               >
-                <Plus className="size-4" />
+                <Plus className="size-4 max-[370px]:size-3.5" />
               </button>
             </div>
           </div>
@@ -207,22 +237,33 @@ export function OrderForm({
         )}
 
         <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Estimated cost</span>
-          <span className="text-sm font-semibold tabular-nums">{formatMoney(estimate, currency)}</span>
+          <span className="text-xs text-muted-foreground max-[370px]:text-[11px]">Estimated cost</span>
+          <span className="text-sm font-semibold tabular-nums max-[370px]:text-[13px]">
+            {formatMoney(estimate, currency)}
+          </span>
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Button className="flex-1" onClick={submit} disabled={!canSubmit || saving || deleting}>
+          <Button
+            className="flex-1 max-[370px]:h-7 max-[370px]:text-[13px]"
+            onClick={submit}
+            disabled={!canSubmit || saving || deleting}
+          >
             {saving && <Spinner />}
             {saving ? "Saving…" : existing ? "Save changes" : "Submit"}
           </Button>
           {existing && (
-            <Button variant="ghost" onClick={onDelete} disabled={saving || deleting}>
+            <Button
+              variant="ghost"
+              onClick={onDelete}
+              disabled={saving || deleting}
+              className="max-[370px]:h-7 max-[370px]:text-[13px]"
+            >
               {deleting ? <Spinner /> : "Delete"}
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground max-[370px]:text-[11px]">
           NB: Daily order will close before {formatTime12h(cutoffTime)}.
         </p>
       </Collapsible>
