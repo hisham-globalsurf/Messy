@@ -38,7 +38,7 @@ export default function MemberLoginPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="mb-6 flex flex-col items-center justify-center text-center">
-          <div className="mb-2 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <div className="mb-2 flex size-11 animate-in items-center justify-center rounded-xl bg-primary text-primary-foreground zoom-in-50 fade-in duration-500 ease-out">
             <UtensilsCrossed className="size-5" />
           </div>
           <CardTitle>Order your meal</CardTitle>
