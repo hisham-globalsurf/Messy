@@ -13,7 +13,7 @@ export const GET = memberRoute(async (session) => {
 
   const entries = await MealEntryModel.find({ settlementId: null }).sort({ date: 1 }).lean();
 
-  const days: { date: string; amount: number }[] = [];
+  const days: { date: string; amount: number; sharedWith?: string }[] = [];
   let totalDue = 0;
 
   for (const entry of entries) {
@@ -21,7 +21,9 @@ export const GET = memberRoute(async (session) => {
     if (shares.length === 0) continue;
 
     const amount = Number(shares.reduce((t, s) => t + s.amount, 0).toFixed(2));
-    days.push({ date: new Date(entry.date).toISOString().slice(0, 10), amount });
+    const pair = entry.halfPairs?.find((p) => p.names.some((n) => n.toLowerCase() === lc));
+    const sharedWith = pair?.names.find((n) => n.toLowerCase() !== lc);
+    days.push({ date: new Date(entry.date).toISOString().slice(0, 10), amount, sharedWith });
 
     const due = shares.filter((s) => !s.paid).reduce((t, s) => t + s.amount, 0);
     totalDue += due;

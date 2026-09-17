@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CalendarDays, CalendarX2 } from "lucide-react";
+import { CalendarDays, CalendarX2, Users } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -9,10 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ListSkeleton } from "@/components/feature/states";
 import { useMemberHistory } from "@/lib/client/hooks";
 import { formatMoney, todayInputValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+interface DayEntry {
+  amount: number;
+  sharedWith?: string;
+}
 
 interface Props {
   open: boolean;
@@ -24,11 +30,11 @@ export function HistorySheet({ open, onOpenChange, currency }: Props) {
   const { data, isLoading } = useMemberHistory(open);
 
   const months = useMemo(() => {
-    const byMonth = new Map<string, Map<string, number>>();
+    const byMonth = new Map<string, Map<string, DayEntry>>();
     for (const day of data?.days ?? []) {
       const monthKey = day.date.slice(0, 7);
-      const forMonth = byMonth.get(monthKey) ?? new Map<string, number>();
-      forMonth.set(day.date, day.amount);
+      const forMonth = byMonth.get(monthKey) ?? new Map<string, DayEntry>();
+      forMonth.set(day.date, { amount: day.amount, sharedWith: day.sharedWith });
       byMonth.set(monthKey, forMonth);
     }
     return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -83,13 +89,21 @@ export function HistorySheet({ open, onOpenChange, currency }: Props) {
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
-function MonthGrid({ monthKey, days, currency }: { monthKey: string; days: Map<string, number>; currency: string }) {
+function MonthGrid({
+  monthKey,
+  days,
+  currency,
+}: {
+  monthKey: string;
+  days: Map<string, DayEntry>;
+  currency: string;
+}) {
   const [year, month] = monthKey.split("-").map(Number);
   const monthLabel = new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const daysInMonth = new Date(year, month, 0).getDate();
   const startWeekday = new Date(year, month - 1, 1).getDay();
   const cells: (number | null)[] = [...Array(startWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  const monthTotal = [...days.values()].reduce((t, v) => t + v, 0);
+  const monthTotal = [...days.values()].reduce((t, v) => t + v.amount, 0);
   const today = todayInputValue();
 
   return (
@@ -109,24 +123,53 @@ function MonthGrid({ monthKey, days, currency }: { monthKey: string; days: Map<s
         {cells.map((day, i) => {
           if (day === null) return <div key={i} />;
           const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const amount = days.get(dateStr);
+          const entry = days.get(dateStr);
           const isToday = dateStr === today;
-          return (
+
+          const cell = (
             <div
-              key={i}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-xs",
-                amount ? "bg-amber-500/10 text-foreground" : "text-muted-foreground",
+                "relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-xs",
+                entry ? "bg-amber-500/10 text-foreground" : "text-muted-foreground",
+                entry?.sharedWith && "cursor-pointer transition-colors hover:bg-amber-500/20",
                 isToday && "ring-1 ring-inset ring-primary",
               )}
             >
-              <span className={cn(amount && "font-semibold")}>{day}</span>
-              {amount ? (
+              {entry?.sharedWith && (
+                <span className="absolute top-0.5 right-0.5 flex size-3 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users className="size-2" />
+                </span>
+              )}
+              <span className={cn(entry && "font-semibold")}>{day}</span>
+              {entry ? (
                 <span className="text-[10px] leading-none font-semibold text-amber-700 dark:text-amber-400">
-                  {formatMoney(amount, currency)}
+                  {formatMoney(entry.amount, currency)}
                 </span>
               ) : null}
             </div>
+          );
+
+          if (!entry?.sharedWith) return <div key={i}>{cell}</div>;
+
+          return (
+            <Popover key={i}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Shared with ${entry.sharedWith}`}
+                  className="block w-full cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
+                >
+                  {cell}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                className="w-auto flex-row items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium"
+              >
+                <Users className="size-3.5 text-muted-foreground" />
+                Shared with {entry.sharedWith}
+              </PopoverContent>
+            </Popover>
           );
         })}
       </div>

@@ -131,6 +131,8 @@ export function useNotifications() {
 export interface MemberHistoryDay {
   date: string;
   amount: number;
+  /** Set when this day's meal was a half-share paired with another member. */
+  sharedWith?: string;
 }
 
 export interface MemberHistory {
