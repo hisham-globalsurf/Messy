@@ -82,6 +82,7 @@ export interface MemberSettings {
   messClosedFrom: string | null;
   messClosedTo: string | null;
   messClosedMessage: string;
+  weekendClosed: boolean;
 }
 
 // Member-facing hooks opt back into revalidate-on-focus (off globally, see Providers) —

@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 interface Props {
   showTomorrowButton: boolean;
   onOrderTomorrow: () => void;
+  /** Button text — "Order for tomorrow" normally, or "Order for <weekday>" when a weekend/
+   * holiday closure pushes the next orderable date past tomorrow. */
+  orderButtonLabel: string;
   /** Present when the member has an order in for today — swaps the generic "closed" message
    * for a confirmed/delivered status, per {@link import("@/lib/cutoff").postCutoffOrderStage}. */
   orderStage?: "confirmed" | "delivered" | null;
 }
 
-export function CutoffPanel({ showTomorrowButton, onOrderTomorrow, orderStage }: Props) {
+export function CutoffPanel({ showTomorrowButton, onOrderTomorrow, orderButtonLabel, orderStage }: Props) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-6 text-center">
       {orderStage === "confirmed" ? (
@@ -38,7 +41,7 @@ export function CutoffPanel({ showTomorrowButton, onOrderTomorrow, orderStage }:
       )}
       {showTomorrowButton && (
         <Button onClick={onOrderTomorrow} className="hidden sm:inline-flex">
-          Order for tomorrow
+          {orderButtonLabel}
         </Button>
       )}
     </div>

@@ -47,6 +47,7 @@ interface SettingsLike {
   messClosedFrom?: Date | string | null;
   messClosedTo?: Date | string | null;
   messClosedMessage?: string;
+  weekendClosed?: boolean;
   updatedAt: Date | string;
 }
 
@@ -113,6 +114,7 @@ export function serializeSettings(doc: SettingsLike): Settings {
     messClosedFrom: doc.messClosedFrom ? new Date(doc.messClosedFrom).toISOString().slice(0, 10) : null,
     messClosedTo: doc.messClosedTo ? new Date(doc.messClosedTo).toISOString().slice(0, 10) : null,
     messClosedMessage: doc.messClosedMessage ?? "",
+    weekendClosed: doc.weekendClosed ?? false,
     updatedAt: new Date(doc.updatedAt).toISOString(),
   };
 }

@@ -22,5 +22,6 @@ export const GET = memberRoute(async () => {
     messClosedFrom: settings.messClosedFrom ? new Date(settings.messClosedFrom).toISOString().slice(0, 10) : null,
     messClosedTo: settings.messClosedTo ? new Date(settings.messClosedTo).toISOString().slice(0, 10) : null,
     messClosedMessage: settings.messClosedMessage ?? "",
+    weekendClosed: settings.weekendClosed ?? false,
   });
 });

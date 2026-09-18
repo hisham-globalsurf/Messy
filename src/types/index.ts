@@ -100,6 +100,8 @@ export interface Settings {
   messClosedFrom: string | null;
   messClosedTo: string | null;
   messClosedMessage: string;
+  /** Whether the mess is treated as closed every Saturday and Sunday. */
+  weekendClosed: boolean;
   updatedAt: string;
 }
 

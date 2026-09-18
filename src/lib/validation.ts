@@ -118,6 +118,7 @@ export const settingsUpdateSchema = z
     messClosedFrom: z.coerce.date().nullable().optional(),
     messClosedTo: z.coerce.date().nullable().optional(),
     messClosedMessage: z.string().trim().max(300).optional(),
+    weekendClosed: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "Nothing to update")
   .refine(

@@ -32,6 +32,9 @@ const settingsSchema = new Schema(
     messClosedFrom: { type: Date, default: null },
     messClosedTo: { type: Date, default: null },
     messClosedMessage: { type: String, trim: true, default: "" },
+    /** When true, the mess is treated as closed every Saturday and Sunday — same effect as
+     * messClosedFrom/To but recurring weekly instead of a one-off range. */
+    weekendClosed: { type: Boolean, required: true, default: false },
   },
   { timestamps: { createdAt: false, updatedAt: true } },
 );

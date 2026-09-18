@@ -33,6 +33,7 @@ export const PATCH = route(async (_session, request: Request) => {
   if (patch.messClosedFrom !== undefined) settings.messClosedFrom = patch.messClosedFrom;
   if (patch.messClosedTo !== undefined) settings.messClosedTo = patch.messClosedTo;
   if (patch.messClosedMessage !== undefined) settings.messClosedMessage = patch.messClosedMessage;
+  if (patch.weekendClosed !== undefined) settings.weekendClosed = patch.weekendClosed;
 
   if (!settings.messName) throw new ApiError(400, "Mess name cannot be empty");
   await settings.save();

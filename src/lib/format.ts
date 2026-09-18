@@ -30,6 +30,12 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** Full weekday name for a "YYYY-MM-DD" date, e.g. "Monday" — used to label an order date that
+ * isn't literally today/tomorrow (a weekend/holiday skip lands on some other day of the week). */
+export function weekdayName(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
+}
+
 export function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit",

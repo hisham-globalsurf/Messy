@@ -13,15 +13,15 @@ import { MarqueeBanner } from "@/components/feature/member/marquee-banner";
 import { PushSubscribeButton } from "@/components/feature/member/push-subscribe-button";
 import { MessClosedNotice } from "@/components/feature/member/mess-closed-notice";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useMemberName } from "@/components/feature/member/member-session-context";
 import { ListSkeleton } from "@/components/feature/states";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useMemberOrders, useMemberSettings, type MemberOrders } from "@/lib/client/hooks";
 import { useScheduledRerender } from "@/lib/client/useScheduledRerender";
-import { isPastCutoffToday, msUntilIstTime, postCutoffOrderStage } from "@/lib/cutoff";
-import { isMessClosedOn } from "@/lib/messClosure";
-import { formatDate } from "@/lib/format";
+import { isPastCutoffToday, msUntilIstTime, postCutoffOrderStage, tomorrowIst } from "@/lib/cutoff";
+import { closureOn } from "@/lib/messClosure";
+import { formatDate, weekdayName } from "@/lib/format";
 import type { QueueOrderItem } from "@/types";
 
 export default function MemberOrderPage() {
@@ -57,19 +57,20 @@ export default function MemberOrderPage() {
     return <p className="py-10 text-center text-sm text-muted-foreground">Could not load your orders.</p>;
   }
 
-  if (isMessClosedOn(orders.todayDate, settings.messClosedFrom, settings.messClosedTo)) {
-    return (
-      <MessClosedNotice
-        from={settings.messClosedFrom!}
-        to={settings.messClosedTo!}
-        message={settings.messClosedMessage}
-      />
-    );
+  const todayClosure = closureOn(orders.todayDate, settings);
+  if (todayClosure) {
+    return <MessClosedNotice from={todayClosure.from} to={todayClosure.to} message={todayClosure.message} />;
   }
 
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
   const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
-  const tomorrowLabel = `Tomorrow — ${formatDate(orders.tomorrowDate)}`;
+  // "Tomorrow" only when the next orderable date is literally the next calendar day — a
+  // weekend/holiday in between (e.g. ordering on Friday) lands it further out, so the label and
+  // button text switch to that day's name ("Monday") instead of implying it's tomorrow.
+  const tomorrowIsLiteral = orders.tomorrowDate === tomorrowIst();
+  const tomorrowWord = tomorrowIsLiteral ? "Tomorrow" : weekdayName(orders.tomorrowDate);
+  const tomorrowLabel = `${tomorrowWord} — ${formatDate(orders.tomorrowDate)}`;
+  const orderForTomorrowLabel = `Order for ${tomorrowIsLiteral ? "tomorrow" : tomorrowWord}`;
   const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime);
 
   function openTomorrowSheet() {
@@ -154,7 +155,7 @@ export default function MemberOrderPage() {
           <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" stage={todayStage} />
           {pastCutoff && !showTomorrow && (
             <div className="hidden justify-center sm:flex">
-              <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
+              <Button onClick={() => setRevealTomorrow(true)}>{orderForTomorrowLabel}</Button>
             </div>
           )}
         </>
@@ -163,7 +164,7 @@ export default function MemberOrderPage() {
           <PairedNotice partnerName={orders.today.order.partnerName} dateLabel="Today" isTomorrow={false} />
           {pastCutoff && !showTomorrow && (
             <div className="hidden justify-center sm:flex">
-              <Button onClick={() => setRevealTomorrow(true)}>Order for tomorrow</Button>
+              <Button onClick={() => setRevealTomorrow(true)}>{orderForTomorrowLabel}</Button>
             </div>
           )}
         </>
@@ -171,6 +172,7 @@ export default function MemberOrderPage() {
         <CutoffPanel
           showTomorrowButton={!showTomorrow}
           onOrderTomorrow={() => setRevealTomorrow(true)}
+          orderButtonLabel={orderForTomorrowLabel}
           orderStage={orders.today.status === "pending" ? todayStage : null}
         />
       ) : (
@@ -205,20 +207,21 @@ export default function MemberOrderPage() {
         <button
           type="button"
           onClick={openTomorrowSheet}
-          aria-label="Order for tomorrow"
+          aria-label={orderForTomorrowLabel}
           className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg sm:hidden"
         >
           <CalendarPlus className="size-4" />
-          Tomorrow
+          {tomorrowWord}
         </button>
       )}
 
       <Sheet open={tomorrowSheetOpen} onOpenChange={setTomorrowSheetOpen}>
         <SheetContent side="bottom" className="mx-auto flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-t-2xl sm:hidden">
-          <SheetHeader>
-            <SheetTitle>{tomorrowLabel}</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">{tomorrowContent}</div>
+          {/* Visually hidden: OrderForm/OrderConfirmedNotice/PairedNotice already render this
+              same date label as their own visible card header right below — this instance only
+              satisfies the sheet's accessible-name requirement. */}
+          <SheetTitle className="sr-only">{tomorrowLabel}</SheetTitle>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-8 pb-4">{tomorrowContent}</div>
         </SheetContent>
       </Sheet>
 

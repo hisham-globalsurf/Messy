@@ -4,9 +4,10 @@ import { PersonModel } from "@/models/Person";
 import { SettingsModel } from "@/models/Settings";
 import { memberOrderSchema } from "@/lib/validation";
 import { toUtcDay } from "@/lib/format";
-import { isDateOrderable, queueAutoClearAt, todayIst, tomorrowIst } from "@/lib/cutoff";
+import { isDateOrderable, nextOpenDateAfter, queueAutoClearAt, todayIst } from "@/lib/cutoff";
+import { closureOn } from "@/lib/messClosure";
 import { assertPeopleAvailable, findConfirmedOrder, findLastOrderDraft } from "@/lib/queue";
-import { serializeQueueOrder } from "@/lib/serialize";
+import { serializeQueueOrder, serializeSettings } from "@/lib/serialize";
 import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
@@ -34,8 +35,12 @@ async function dateOrderStatus(personId: string, personName: string, date: Date)
 
 export const GET = memberRoute(async (session) => {
   await connectDB();
+  const settingsDoc = await SettingsModel.findOne({ key: "singleton" }).lean();
+  if (!settingsDoc) throw new ApiError(500, "Settings not found");
+  const settings = serializeSettings(settingsDoc);
+
   const todayDate = todayIst();
-  const tomorrowDate = tomorrowIst();
+  const tomorrowDate = nextOpenDateAfter(todayDate, (date) => closureOn(date, settings) !== null);
 
   const today = await dateOrderStatus(session.sub, session.name, toUtcDay(todayDate));
   const tomorrow = await dateOrderStatus(session.sub, session.name, toUtcDay(tomorrowDate));
@@ -51,15 +56,18 @@ export const POST = memberRoute(async (session, request: Request) => {
   const input = memberOrderSchema.parse(await request.json());
   await connectDB();
 
-  const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
-  if (!settings) throw new ApiError(500, "Settings not found");
+  const settingsDoc = await SettingsModel.findOne({ key: "singleton" }).lean();
+  if (!settingsDoc) throw new ApiError(500, "Settings not found");
+  const settings = serializeSettings(settingsDoc);
 
   const dateUtc = toUtcDay(input.date);
   const dateStr = dateUtc.toISOString().slice(0, 10);
-  if (dateStr !== todayIst() && dateStr !== tomorrowIst()) {
-    throw new ApiError(400, "You can only order for today or tomorrow");
+  const todayDate = todayIst();
+  const nextOpenDate = nextOpenDateAfter(todayDate, (date) => closureOn(date, settings) !== null);
+  if (dateStr !== todayDate && dateStr !== nextOpenDate) {
+    throw new ApiError(400, "You can only order for today or the next available day");
   }
-  if (!isDateOrderable(dateStr, settings.orderCutoffTime)) {
+  if (closureOn(dateStr, settings) || !isDateOrderable(dateStr, settings.orderCutoffTime)) {
     throw new ApiError(403, "Ordering for this date has closed");
   }
   if (await findConfirmedOrder(session.name, dateUtc)) {

@@ -15,6 +15,11 @@ function toDateInputValue(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function fromDateInputValue(dateInputValue: string): Date {
+  const [year, month, day] = dateInputValue.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
 /** Today's date in IST, as "YYYY-MM-DD". */
 export function todayIst(): string {
   return toDateInputValue(istNow());
@@ -25,6 +30,19 @@ export function tomorrowIst(): string {
   const d = istNow();
   d.setUTCDate(d.getUTCDate() + 1);
   return toDateInputValue(d);
+}
+
+/** The next date after `dateInputValue` ("YYYY-MM-DD") for which `isClosed` returns false —
+ * used to land the "order for tomorrow" flow on the next actually-open day when weekends or an
+ * admin closure fall in between (e.g. ordering on Friday jumps to Monday). */
+export function nextOpenDateAfter(dateInputValue: string, isClosed: (date: string) => boolean): string {
+  const d = fromDateInputValue(dateInputValue);
+  let next: string;
+  do {
+    d.setUTCDate(d.getUTCDate() + 1);
+    next = toDateInputValue(d);
+  } while (isClosed(next));
+  return next;
 }
 
 /** Whether the current IST wall-clock time is at or past `cutoffTime` ("HH:mm"). */

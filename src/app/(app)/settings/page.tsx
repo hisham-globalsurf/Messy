@@ -13,13 +13,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { ReportsList } from "@/components/feature/reports-list";
 import { ListSkeleton } from "@/components/feature/states";
 import { Spinner } from "@/components/ui/spinner";
 import { useSettings } from "@/lib/client/hooks";
 import { mutateApi } from "@/lib/client/fetcher";
-import { isMessClosedOn } from "@/lib/messClosure";
+import { isMessClosedOn, isWeekendClosedOn } from "@/lib/messClosure";
 import { todayIst } from "@/lib/cutoff";
 import type { FoodVariant, Settings } from "@/types";
 
@@ -364,9 +365,13 @@ function MessClosureForm({ settings }: { settings: Settings }) {
   const [from, setFrom] = useState(settings.messClosedFrom ?? "");
   const [to, setTo] = useState(settings.messClosedTo ?? "");
   const [message, setMessage] = useState(settings.messClosedMessage ?? "");
+  const [weekendClosed, setWeekendClosed] = useState(settings.weekendClosed);
+  const [weekendSaving, setWeekendSaving] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const isActive = isMessClosedOn(todayIst(), settings.messClosedFrom, settings.messClosedTo);
+  const isActive =
+    isMessClosedOn(todayIst(), settings.messClosedFrom, settings.messClosedTo) ||
+    isWeekendClosedOn(todayIst(), settings.weekendClosed);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -387,6 +392,21 @@ function MessClosureForm({ settings }: { settings: Settings }) {
       toast.error(err instanceof Error ? err.message : "Could not save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleWeekendClosed(checked: boolean) {
+    setWeekendClosed(checked);
+    setWeekendSaving(true);
+    try {
+      await mutateApi("/api/settings", "PATCH", { weekendClosed: checked });
+      await globalMutate("/api/settings");
+      toast.success(checked ? "Mess closed every Saturday & Sunday" : "Weekend closure turned off");
+    } catch (err) {
+      setWeekendClosed(!checked);
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setWeekendSaving(false);
     }
   }
 
@@ -427,7 +447,26 @@ function MessClosureForm({ settings }: { settings: Settings }) {
           Clears itself automatically once the end date passes.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="weekend-closed" className="cursor-pointer">
+              Closed every Saturday & Sunday
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              No mess on weekends — members ordering on Friday get &ldquo;Order for Monday&rdquo; instead.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {weekendSaving && <Spinner className="size-3.5" />}
+            <Switch
+              id="weekend-closed"
+              checked={weekendClosed}
+              disabled={weekendSaving}
+              onCheckedChange={toggleWeekendClosed}
+            />
+          </div>
+        </div>
         <form onSubmit={save} className="space-y-4">
           <div className="flex flex-wrap gap-4">
             <div className="space-y-2">
