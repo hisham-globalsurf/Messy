@@ -217,11 +217,8 @@ export default function MemberOrderPage() {
 
       <Sheet open={tomorrowSheetOpen} onOpenChange={setTomorrowSheetOpen}>
         <SheetContent side="bottom" className="mx-auto flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-t-2xl sm:hidden">
-          {/* Visually hidden: OrderForm/OrderConfirmedNotice/PairedNotice already render this
-              same date label as their own visible card header right below — this instance only
-              satisfies the sheet's accessible-name requirement. */}
           <SheetTitle className="sr-only">{tomorrowLabel}</SheetTitle>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-8 pb-4">{tomorrowContent}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-14 pb-4">{tomorrowContent}</div>
         </SheetContent>
       </Sheet>
 
