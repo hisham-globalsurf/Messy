@@ -63,7 +63,11 @@ export default function MemberOrderPage() {
   }
 
   const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
-  const showTomorrow = pastCutoff && (revealTomorrow || orders.tomorrow.status !== "none");
+  // Once there's a tomorrow order (placed, paired or confirmed), it becomes the main card on
+  // every screen size and today's card steps aside — today's meal is already settled by then,
+  // so tomorrow's is the one the member actually cares about.
+  const hasTomorrowOrder = pastCutoff && orders.tomorrow.status !== "none";
+  const showTomorrow = pastCutoff && (revealTomorrow || hasTomorrowOrder);
   // "Tomorrow" only when the next orderable date is literally the next calendar day — a
   // weekend/holiday in between (e.g. ordering on Friday) lands it further out, so the label and
   // button text switch to that day's name ("Monday") instead of implying it's tomorrow.
@@ -96,6 +100,8 @@ export default function MemberOrderPage() {
         (current) => (current ? { ...current, [key]: { status: "pending", order: updated } } : current),
         { revalidate: false },
       );
+      // The order now shows inline on the page, so the phone drawer has done its job.
+      if (key === "tomorrow") setTomorrowSheetOpen(false);
       toast.success("Order placed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not place order");
@@ -150,7 +156,9 @@ export default function MemberOrderPage() {
     <div className="space-y-4">
       <MarqueeBanner />
 
-      {orders.today.status === "confirmed" ? (
+      {hasTomorrowOrder ? (
+        tomorrowContent
+      ) : orders.today.status === "confirmed" ? (
         <>
           <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" stage={todayStage} />
           {pastCutoff && !showTomorrow && (
@@ -198,12 +206,12 @@ export default function MemberOrderPage() {
         </>
       )}
 
-      {showTomorrow && <div className="hidden sm:block">{tomorrowContent}</div>}
+      {showTomorrow && !hasTomorrowOrder && <div className="hidden sm:block">{tomorrowContent}</div>}
 
       {/* Phone only: a thumb-reachable fixed button (bottom-right, within easy thumb reach while
           holding the phone one-handed) that opens tomorrow's order card as a bottom drawer,
           instead of the desktop inline reveal above. */}
-      {pastCutoff && (
+      {pastCutoff && !hasTomorrowOrder && (
         <button
           type="button"
           onClick={openTomorrowSheet}
@@ -215,7 +223,7 @@ export default function MemberOrderPage() {
         </button>
       )}
 
-      <Sheet open={tomorrowSheetOpen} onOpenChange={setTomorrowSheetOpen}>
+      <Sheet open={tomorrowSheetOpen && !hasTomorrowOrder} onOpenChange={setTomorrowSheetOpen}>
         <SheetContent side="bottom" className="mx-auto flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-t-2xl sm:hidden">
           <SheetTitle className="sr-only">{tomorrowLabel}</SheetTitle>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-14 pb-4">{tomorrowContent}</div>
