@@ -16,16 +16,19 @@ import type { MemberDateOrder } from "@/types";
 const collation = { locale: "en", strength: 2 } as const;
 
 async function dateOrderStatus(personId: string, personName: string, date: Date): Promise<MemberDateOrder> {
-  const confirmed = await findConfirmedOrder(personName, date);
+  // All three lookups are independent reads — run them together rather than paying three
+  // sequential DB round-trips, then pick the winner in priority order.
+  const [confirmed, row, partnerRow] = await Promise.all([
+    findConfirmedOrder(personName, date),
+    QueueOrderModel.findOne({ personId, date }).lean(),
+    // Someone else may have already paired with this member for a half order without this
+    // member having submitted anything of their own yet — surface that live instead of making
+    // them find out only when their own submit gets rejected as a clash.
+    QueueOrderModel.findOne({ partnerPersonId: personId, date }).lean(),
+  ]);
+
   if (confirmed) return { status: "confirmed", order: confirmed };
-
-  const row = await QueueOrderModel.findOne({ personId, date }).lean();
   if (row) return { status: "pending", order: serializeQueueOrder(row) };
-
-  // Someone else may have already paired with this member for a half order without this
-  // member having submitted anything of their own yet — surface that live instead of making
-  // them find out only when their own submit gets rejected as a clash.
-  const partnerRow = await QueueOrderModel.findOne({ partnerPersonId: personId, date }).lean();
   if (partnerRow) {
     return { status: "paired", order: { partnerName: partnerRow.personName, variant: partnerRow.variant } };
   }
@@ -42,12 +45,16 @@ export const GET = memberRoute(async (session) => {
   const todayDate = todayIst();
   const tomorrowDate = nextOpenDateAfter(todayDate, (date) => closureOn(date, settings) !== null);
 
-  const today = await dateOrderStatus(session.sub, session.name, toUtcDay(todayDate));
-  const tomorrow = await dateOrderStatus(session.sub, session.name, toUtcDay(tomorrowDate));
+  // lastOrder is fetched alongside rather than after the two statuses — it's a single indexed
+  // read, cheaper than the extra sequential round-trip of waiting to see whether it's needed.
+  const [today, tomorrow, lastOrderDraft] = await Promise.all([
+    dateOrderStatus(session.sub, session.name, toUtcDay(todayDate)),
+    dateOrderStatus(session.sub, session.name, toUtcDay(tomorrowDate)),
+    findLastOrderDraft(session.name),
+  ]);
   // Either date's form (not just both) can need this to prefill — e.g. today's already ordered
   // but tomorrow isn't yet, which is the common case once "Order for tomorrow" opens up.
-  const lastOrder =
-    today.status === "none" || tomorrow.status === "none" ? await findLastOrderDraft(session.name) : null;
+  const lastOrder = today.status === "none" || tomorrow.status === "none" ? lastOrderDraft : null;
 
   return ok({ today, tomorrow, todayDate, tomorrowDate, lastOrder });
 });
