@@ -132,6 +132,7 @@ export async function moveQueueToEntries(
   try {
     let result: { entryId: string; movedCount: number } | null = null;
     let notifyPersonIds: Types.ObjectId[] = [];
+    let pushTargets: { id: Types.ObjectId; body: string }[] = [];
     let messName = "Messy";
 
     await session.withTransaction(async () => {
@@ -206,6 +207,16 @@ export async function moveQueueToEntries(
       await QueueOrderModel.deleteMany({ _id: { $in: rows.map((r) => r._id) } }, { session });
       result = { entryId, movedCount: rows.length };
       notifyPersonIds = rows.flatMap((r) => [r.personId, ...(r.partnerPersonId ? [r.partnerPersonId] : [])]);
+      // Half-pair rows only exist once (on the submitter's side) — name the other person
+      // in each side's push so both know who they're confirmed with, not just that "a meal" is on.
+      pushTargets = rows.flatMap((r) =>
+        r.kind === "half" && r.partnerPersonId && r.partnerName
+          ? [
+              { id: r.personId, body: `Your order with ${r.partnerName} is confirmed and it’s on the way!` },
+              { id: r.partnerPersonId, body: `Your order with ${r.personName} is confirmed and it’s on the way!` },
+            ]
+          : [{ id: r.personId, body: "Your meal is confirmed and it’s on the way!" }],
+      );
     });
 
     if (!result) throw new ApiError(500, "Move failed");
@@ -215,14 +226,14 @@ export async function moveQueueToEntries(
     // closed it (Ably needs a live connection, so it can't reach a closed tab on its own).
     await Promise.all([
       publishQueueChanged(),
-      ...notifyPersonIds.flatMap((id) => [
-        publishOrderUpdate(id.toString()),
-        sendPushToPerson(id.toString(), {
+      ...notifyPersonIds.map((id) => publishOrderUpdate(id.toString())),
+      ...pushTargets.map((target) =>
+        sendPushToPerson(target.id.toString(), {
           title: messName,
-          body: "Your meal is confirmed and it’s on the way!",
+          body: target.body,
           url: "/order",
         }).catch((err) => console.error("Push send failed:", err)),
-      ]),
+      ),
     ]);
 
     return result;
