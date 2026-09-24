@@ -77,7 +77,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
       await fetch("/api/member/push/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sub.toJSON(), replaces: event.oldSubscription?.endpoint }),
+        body: JSON.stringify({ ...sub.toJSON(), mode: "replace", replaces: event.oldSubscription?.endpoint }),
       });
     })(),
   );

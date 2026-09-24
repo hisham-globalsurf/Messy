@@ -35,10 +35,14 @@ async function sendToSubscriptions(
   await Promise.all(
     subs.map(async (sub) => {
       try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: sub.keys },
-          body,
-        );
+        // urgency "high": Android (FCM) otherwise treats pushes as normal priority and can hold
+        // them while the phone dozes, so order reminders showed up late or not at all.
+        // TTL: the push service keeps retrying an offline device for a day, then drops it —
+        // a stale "order now" reminder is worse than none.
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, body, {
+          urgency: "high",
+          TTL: 24 * 60 * 60,
+        });
         sent += 1;
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
@@ -61,6 +65,12 @@ async function sendToSubscriptions(
 
 export async function sendPushToPerson(personId: string, payload: PushPayload) {
   const subs = await PushSubscriptionModel.find({ personId }).lean();
+  return sendToSubscriptions(subs, payload);
+}
+
+/** One specific device — used to confirm a subscription actually delivers right after it's saved. */
+export async function sendPushToEndpoint(endpoint: string, payload: PushPayload) {
+  const subs = await PushSubscriptionModel.find({ endpoint }).lean();
   return sendToSubscriptions(subs, payload);
 }
 

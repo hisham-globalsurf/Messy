@@ -16,6 +16,38 @@ function urlBase64ToUint8Array(base64String: string): BufferSource {
   return bytes;
 }
 
+type SaveMode = "sync" | "enable" | "replace";
+
+function saveSubscription(sub: PushSubscription, mode: SaveMode, replaces?: string) {
+  return mutateApi<{ saved: boolean }>("/api/member/push/subscribe", "POST", { ...sub.toJSON(), mode, replaces });
+}
+
+/** Drops whatever subscription this browser holds and makes a brand-new one. A leftover one can
+ * be dead on the push service's side, or tied to an old VAPID key (subscribe() would throw).
+ * Retries because Chrome intermittently rejects a subscribe() made right after an unsubscribe()
+ * or while a freshly deployed service worker is still activating ("Registration failed"). */
+async function freshSubscription(reg: ServiceWorkerRegistration): Promise<PushSubscription> {
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!publicKey) throw new Error("Push isn't configured");
+
+  const old = await reg.pushManager.getSubscription();
+  if (old) await old.unsubscribe().catch(() => {});
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+    try {
+      return await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 /** Explicit opt-in button — never auto-prompt Notification.requestPermission() on load,
  * several browsers require the prompt to originate from a user gesture anyway. */
 export function PushSubscribeButton() {
@@ -28,23 +60,24 @@ export function PushSubscribeButton() {
     // Feature-detecting browser globals — not knowable during SSR render.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSupported(true);
+
+    // A subscription existing in this browser doesn't mean pushes arrive — the server may have
+    // pruned it after the push service rejected it, or never saved it. Check with the server on
+    // every load and self-heal: known → refreshed; unknown → resubscribe fresh and register that.
+    // Never unsubscribes on a permission read alone — that proved unreliable and killed live
+    // subscriptions; without permission we simply show the button.
+    if (Notification.permission !== "granted") return;
     navigator.serviceWorker.ready
       .then(async (reg) => {
         const sub = await reg.pushManager.getSubscription();
         if (!sub) return;
-        // A browser-side subscription alone doesn't mean pushes arrive — the server may have
-        // pruned it (a send came back 410 after permission was toggled off), or never saved it
-        // (the original POST failed). If permission was revoked it's dead: drop it so the button
-        // shows again. Otherwise re-send it on every load (an idempotent upsert) so the server
-        // always has this device's current endpoint.
-        if (Notification.permission !== "granted") {
-          await sub.unsubscribe();
-          return;
-        }
         setSubscribed(true);
-        await mutateApi("/api/member/push/subscribe", "POST", sub.toJSON());
+        const { saved } = await saveSubscription(sub, "sync");
+        if (saved) return;
+        const fresh = await freshSubscription(reg);
+        await saveSubscription(fresh, "replace", sub.endpoint);
       })
-      .catch(() => {});
+      .catch(() => setSubscribed(false));
   }, []);
 
   async function enable() {
@@ -56,19 +89,11 @@ export function PushSubscribeButton() {
         return;
       }
 
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicKey) throw new Error("Push isn't configured");
-
-      // Always start from a fresh subscription: a leftover one can be dead on the push
-      // service's side, or tied to an old VAPID key (subscribe() would then throw).
       const reg = await navigator.serviceWorker.ready;
-      const old = await reg.pushManager.getSubscription();
-      if (old) await old.unsubscribe();
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      });
-      await mutateApi("/api/member/push/subscribe", "POST", { ...sub.toJSON(), replaces: old?.endpoint });
+      const sub = await freshSubscription(reg);
+      // The server makes this device the member's only subscription and sends a confirmation
+      // push to it — a rejection here means delivery genuinely doesn't work on this device.
+      await saveSubscription(sub, "enable");
       setSubscribed(true);
       toast.success("Notifications enabled");
     } catch (err) {
