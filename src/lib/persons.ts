@@ -1,24 +1,22 @@
 import { PersonModel } from "@/models/Person";
 import { MealEntryModel } from "@/models/MealEntry";
-import { entryHasPerson } from "@/lib/entryLookup";
+import { NAME_COLLATION, entryPersonFilter } from "@/lib/entryLookup";
 
 const collation = { locale: "en", strength: 2 } as const;
 
 /** Ensure every name exists as a Person (case-insensitive). Returns canonical names. */
 export async function ensurePersons(names: string[]): Promise<string[]> {
   const unique = [...new Map(names.map((n) => [n.toLowerCase(), n.trim()])).values()];
-  const canonical: string[] = [];
+  if (unique.length === 0) return [];
 
-  for (const name of unique) {
-    const existing = await PersonModel.findOne({ name }).collation(collation).lean();
-    if (existing) {
-      canonical.push(existing.name);
-    } else {
-      const created = await PersonModel.create({ name });
-      canonical.push(created.name);
-    }
-  }
-  return canonical;
+  // One lookup for every name instead of one round-trip per name, then create only the missing ones.
+  const existing = await PersonModel.find({ name: { $in: unique } }).collation(collation).lean();
+  const byLower = new Map(existing.map((p) => [p.name.toLowerCase(), p.name]));
+  const missing = unique.filter((n) => !byLower.has(n.toLowerCase()));
+  const created = await Promise.all(missing.map((name) => PersonModel.create({ name })));
+  for (const p of created) byLower.set(p.name.toLowerCase(), p.name);
+
+  return unique.map((n) => byLower.get(n.toLowerCase())!);
 }
 
 /** Rewrite a person's name across every existing meal entry (case-insensitive match). */
@@ -26,13 +24,10 @@ export async function renamePersonInEntries(oldName: string, newName: string): P
   if (oldName.toLowerCase() === newName.toLowerCase() && oldName === newName) return 0;
   const lc = oldName.toLowerCase();
 
-  // halfPairs is an array of 2-tuples ([[String]]). Mongo's implicit array
-  // matching only unwraps one level, so a query like `{ halfPairs: { $regex } }`
-  // (or even `"halfPairs.0"`) never reaches the inner strings and silently
-  // matches nothing — confirmed against the driver directly. Filter in
-  // application code instead, same as the `person` filter in the entries list route.
-  const all = await MealEntryModel.find();
-  const entries = all.filter((e) => entryHasPerson(e, oldName));
+  // Only this person's entries — halfPairs is now `{ names: [a, b] }[]` (see
+  // scripts/migrate-half-pairs.ts), so "halfPairs.names" is directly queryable, unlike the
+  // old nested-tuple shape that forced loading every entry and filtering here.
+  const entries = await MealEntryModel.find(entryPersonFilter(oldName)).collation(NAME_COLLATION);
 
   let touched = 0;
   for (const entry of entries) {

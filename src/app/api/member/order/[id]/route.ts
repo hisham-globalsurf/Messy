@@ -13,10 +13,11 @@ export const DELETE = memberRoute(
     if (!isValidObjectId(id)) throw new ApiError(400, "Invalid id");
     await connectDB();
 
-    const row = await QueueOrderModel.findById(id);
+    const [row, settings] = await Promise.all([
+      QueueOrderModel.findById(id),
+      SettingsModel.findOne({ key: "singleton" }).lean(),
+    ]);
     if (!row || row.personId.toString() !== session.sub) throw new ApiError(404, "Order not found");
-
-    const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
     if (!settings) throw new ApiError(500, "Settings not found");
 
     const dateStr = row.date.toISOString().slice(0, 10);
@@ -27,8 +28,7 @@ export const DELETE = memberRoute(
     const partnerId = row.partnerPersonId?.toString() ?? null;
     await row.deleteOne();
     // Deleting a half order un-pairs the partner live, same as pairing them notified on submit.
-    if (partnerId) await publishOrderUpdate(partnerId);
-    await publishQueueChanged();
+    await Promise.all([partnerId ? publishOrderUpdate(partnerId) : null, publishQueueChanged()]);
     return ok({ ok: true });
   },
 );

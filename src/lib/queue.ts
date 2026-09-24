@@ -7,7 +7,7 @@ import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foo
 import { sendPushToPerson } from "@/lib/push";
 import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
 import { ApiError } from "@/lib/api";
-import { findFullEater, findHalfPair, halfPairPartner } from "@/lib/entryLookup";
+import { NAME_COLLATION, entryPersonFilter, findFullEater, findHalfPair, halfPairPartner } from "@/lib/entryLookup";
 
 /** Rewrite a person's name across any pending queue rows — cascades a Person rename,
  * mirroring `renamePersonInEntries` in src/lib/persons.ts. */
@@ -75,14 +75,11 @@ export interface LastOrderDraft {
 /** The member's most recent past meal (from settled MealEntry history, newest first) —
  * used to prefill the order form so a member doesn't have to re-pick the same thing daily. */
 export async function findLastOrderDraft(personName: string): Promise<LastOrderDraft | null> {
-  // Let Mongo find the single newest entry containing this person (strength-2 collation =
-  // case-insensitive, matching entryLookup's comparison) instead of pulling the whole meal
-  // history over the wire and scanning it here — that grew with every day logged and was the
-  // bulk of /order's load time.
-  const entry = await MealEntryModel.findOne({
-    $or: [{ "fullEaters.name": personName }, { "halfPairs.names": personName }],
-  })
-    .collation({ locale: "en", strength: 2 })
+  // Let Mongo find the single newest entry containing this person instead of pulling the whole
+  // meal history over the wire and scanning it here — that grew with every day logged and was
+  // the bulk of /order's load time.
+  const entry = await MealEntryModel.findOne(entryPersonFilter(personName))
+    .collation(NAME_COLLATION)
     .sort({ date: -1 })
     .lean();
   if (!entry) return null;

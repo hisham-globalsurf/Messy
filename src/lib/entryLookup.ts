@@ -29,3 +29,14 @@ export function entryHasPerson(
 ): boolean {
   return Boolean(findFullEater(entry.fullEaters, name) || findHalfPair(entry.halfPairs, name));
 }
+
+/** Case-insensitive collation for name matching — same comparison as the helpers above, but
+ * evaluated inside Mongo. Pair with `entryPersonFilter` via `.collation(NAME_COLLATION)`. */
+export const NAME_COLLATION = { locale: "en", strength: 2 } as const;
+
+/** Mongo filter for MealEntries that include `name` as a full eater or either half-pair side —
+ * lets a query return just this person's entries instead of loading every entry and running
+ * `entryHasPerson` over them. Must be combined with `.collation(NAME_COLLATION)`. */
+export function entryPersonFilter(name: string) {
+  return { $or: [{ "fullEaters.name": name }, { "halfPairs.names": name }] };
+}

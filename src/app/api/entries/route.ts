@@ -8,7 +8,7 @@ import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foo
 import { toUtcDay } from "@/lib/format";
 import { serializeEntry } from "@/lib/serialize";
 import { ApiError, ok, route } from "@/lib/api";
-import { entryHasPerson } from "@/lib/entryLookup";
+import { NAME_COLLATION, entryPersonFilter } from "@/lib/entryLookup";
 
 export const GET = route(async (_session, request: NextRequest) => {
   const sp = request.nextUrl.searchParams;
@@ -30,11 +30,10 @@ export const GET = route(async (_session, request: NextRequest) => {
   if (settled === true) query.settlementId = { $ne: null };
   if (settled === false) query.settlementId = null;
 
-  let entries = await MealEntryModel.find(query).sort({ date: -1, createdAt: -1 }).lean();
-
-  if (person) {
-    entries = entries.filter((e) => entryHasPerson({ fullEaters: e.fullEaters ?? [], halfPairs: e.halfPairs ?? [] }, person));
-  }
+  // Person filter runs in Mongo so only matching entries come back over the wire.
+  let find = MealEntryModel.find(query);
+  if (person) find = MealEntryModel.find({ ...query, ...entryPersonFilter(person) }).collation(NAME_COLLATION);
+  const entries = await find.sort({ date: -1, createdAt: -1 }).lean();
 
   return ok(entries.map((e) => serializeEntry(e)));
 });

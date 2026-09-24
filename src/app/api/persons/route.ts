@@ -10,10 +10,11 @@ export const GET = route(async (_session, request: NextRequest) => {
   const q = request.nextUrl.searchParams.get("q")?.trim();
 
   const filter = q ? { name: { $regex: escapeRegex(q), $options: "i" } } : {};
-  const persons = await PersonModel.find(filter).sort({ name: 1 }).lean();
-
-  // Order by usage frequency so recent/frequent names surface first.
-  const usage = await MealEntryModel.aggregate<{ _id: string; count: number }>([
+  // Order by usage frequency so recent/frequent names surface first. Both reads are
+  // independent, so run them together.
+  const [persons, usage] = await Promise.all([
+    PersonModel.find(filter).sort({ name: 1 }).lean(),
+    MealEntryModel.aggregate<{ _id: string; count: number }>([
     {
       $project: {
         names: {
@@ -32,6 +33,7 @@ export const GET = route(async (_session, request: NextRequest) => {
     },
     { $unwind: "$names" },
     { $group: { _id: { $toLower: "$names" }, count: { $sum: 1 } } },
+    ]),
   ]);
   const freq = new Map(usage.map((u) => [u._id, u.count]));
 

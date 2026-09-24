@@ -77,7 +77,17 @@ export const POST = memberRoute(async (session, request: Request) => {
   if (closureOn(dateStr, settings) || !isDateOrderable(dateStr, settings.orderCutoffTime)) {
     throw new ApiError(403, "Ordering for this date has closed");
   }
-  if (await findConfirmedOrder(session.name, dateUtc)) {
+  if (input.kind === "half" && input.partnerName!.toLowerCase() === session.name.toLowerCase()) {
+    throw new ApiError(400, "Pick someone other than yourself");
+  }
+
+  // Independent reads — run together instead of one round-trip after another.
+  const [confirmed, partner, existingOwnRow] = await Promise.all([
+    findConfirmedOrder(session.name, dateUtc),
+    input.kind === "half" ? PersonModel.findOne({ name: input.partnerName }).collation(collation).lean() : null,
+    QueueOrderModel.findOne({ personId: session.sub, date: dateUtc }).lean(),
+  ]);
+  if (confirmed) {
     throw new ApiError(
       409,
       "Your order has already been confirmed by the admin. Please contact them for any changes.",
@@ -87,16 +97,11 @@ export const POST = memberRoute(async (session, request: Request) => {
   let partnerPersonId: string | null = null;
   let partnerName: string | null = null;
   if (input.kind === "half") {
-    if (input.partnerName!.toLowerCase() === session.name.toLowerCase()) {
-      throw new ApiError(400, "Pick someone other than yourself");
-    }
-    const partner = await PersonModel.findOne({ name: input.partnerName }).collation(collation).lean();
     if (!partner) throw new ApiError(404, "That person could not be found");
     partnerPersonId = partner._id.toString();
     partnerName = partner.name;
   }
 
-  const existingOwnRow = await QueueOrderModel.findOne({ personId: session.sub, date: dateUtc }).lean();
   await assertPeopleAvailable(dateUtc, session.sub, partnerPersonId, existingOwnRow?._id.toString());
 
   const updated = await QueueOrderModel.findOneAndUpdate(
@@ -118,9 +123,11 @@ export const POST = memberRoute(async (session, request: Request) => {
   // Tell the affected partner(s) live: whoever is newly paired should see it appear, and
   // whoever was paired before (now dropped or swapped for someone else) should see it clear.
   const oldPartnerId = existingOwnRow?.partnerPersonId?.toString() ?? null;
-  if (oldPartnerId && oldPartnerId !== partnerPersonId) await publishOrderUpdate(oldPartnerId);
-  if (partnerPersonId && partnerPersonId !== oldPartnerId) await publishOrderUpdate(partnerPersonId);
-  await publishQueueChanged();
+  await Promise.all([
+    oldPartnerId && oldPartnerId !== partnerPersonId ? publishOrderUpdate(oldPartnerId) : null,
+    partnerPersonId && partnerPersonId !== oldPartnerId ? publishOrderUpdate(partnerPersonId) : null,
+    publishQueueChanged(),
+  ]);
 
   return ok(serializeQueueOrder(updated.toObject()));
 });

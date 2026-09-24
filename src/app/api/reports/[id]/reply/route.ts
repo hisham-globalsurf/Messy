@@ -18,10 +18,11 @@ export const POST = route(
     const { message } = reportReplySchema.parse(await request.json());
     await connectDB();
 
-    const report = await ReportModel.findById(id).lean();
+    const [report, settings] = await Promise.all([
+      ReportModel.findById(id).lean(),
+      SettingsModel.findOne({ key: "singleton" }).lean(),
+    ]);
     if (!report) throw new ApiError(404, "Report not found");
-
-    const settings = await SettingsModel.findOne({ key: "singleton" }).lean();
     if (!settings) throw new ApiError(500, "Settings not found");
 
     const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;

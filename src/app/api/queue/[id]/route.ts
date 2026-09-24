@@ -14,9 +14,11 @@ export const DELETE = route(async (_session, _request: Request, ctx: { params: P
 
   // Best-effort — a member with this order's tab open should see it disappear immediately
   // rather than waiting to refocus the tab.
-  await publishOrderUpdate(row.personId.toString());
-  if (row.partnerPersonId) await publishOrderUpdate(row.partnerPersonId.toString());
-  await publishQueueChanged();
+  await Promise.all([
+    publishOrderUpdate(row.personId.toString()),
+    row.partnerPersonId ? publishOrderUpdate(row.partnerPersonId.toString()) : null,
+    publishQueueChanged(),
+  ]);
 
   return ok({ ok: true });
 });

@@ -27,8 +27,10 @@ export const PATCH = route(async (_session, request: Request, ctx: { params: Pro
   person.preferredVariant = preferredVariant ?? "";
   await person.save();
 
-  const updatedEntries = await renamePersonInEntries(oldName, name);
-  const touchedQueue = await renamePersonInQueue(oldName, name);
+  const [updatedEntries, touchedQueue] = await Promise.all([
+    renamePersonInEntries(oldName, name),
+    renamePersonInQueue(oldName, name),
+  ]);
   if (touchedQueue > 0) await publishQueueChanged();
   return ok({
     _id: person._id.toString(),

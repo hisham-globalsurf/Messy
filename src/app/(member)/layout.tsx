@@ -18,7 +18,7 @@ export default async function MemberLayout({ children }: LayoutProps<"/">) {
   if (!session) redirect("/order/login");
 
   await connectDB();
-  const person = await PersonModel.findById(session.sub).lean();
+  const person = await PersonModel.findById(session.sub, { blocked: 1 }).lean();
   if (!person || person.blocked) return <BlockedScreen personId={session.sub} />;
 
   return (

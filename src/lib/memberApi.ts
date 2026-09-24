@@ -12,7 +12,7 @@ async function loadMemberSession(): Promise<{ session: MemberSessionUser; blocke
   if (!session) throw new ApiError(401, "Not authenticated");
 
   await connectDB();
-  const person = await PersonModel.findById(session.sub).lean();
+  const person = await PersonModel.findById(session.sub, { blocked: 1 }).lean();
   if (!person) throw new ApiError(401, "Not authenticated");
 
   return { session, blocked: person.blocked ?? false };
