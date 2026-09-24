@@ -61,3 +61,24 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+
+// The push service can rotate or expire a subscription on its own (browser update, key
+// rotation, long inactivity). Without this, the server keeps the dead endpoint and the member
+// silently stops getting pushes until they happen to re-enable. Resubscribe with the same key
+// and tell the server, replacing the old endpoint. Same-origin fetch carries the session cookie.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const key = event.oldSubscription?.options?.applicationServerKey;
+      const sub =
+        event.newSubscription ||
+        (key ? await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) : null);
+      if (!sub) return;
+      await fetch("/api/member/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...sub.toJSON(), replaces: event.oldSubscription?.endpoint }),
+      });
+    })(),
+  );
+});

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { mutateApi } from "@/lib/client/fetcher";
@@ -30,7 +31,18 @@ export function PushSubscribeButton() {
     navigator.serviceWorker.ready
       .then(async (reg) => {
         const sub = await reg.pushManager.getSubscription();
-        setSubscribed(!!sub);
+        if (!sub) return;
+        // A browser-side subscription alone doesn't mean pushes arrive — the server may have
+        // pruned it (a send came back 410 after permission was toggled off), or never saved it
+        // (the original POST failed). If permission was revoked it's dead: drop it so the button
+        // shows again. Otherwise re-send it on every load (an idempotent upsert) so the server
+        // always has this device's current endpoint.
+        if (Notification.permission !== "granted") {
+          await sub.unsubscribe();
+          return;
+        }
+        setSubscribed(true);
+        await mutateApi("/api/member/push/subscribe", "POST", sub.toJSON());
       })
       .catch(() => {});
   }, []);
@@ -39,20 +51,29 @@ export function PushSubscribeButton() {
     setLoading(true);
     try {
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
+      if (permission !== "granted") {
+        toast.error("Notifications are blocked — allow them for this app in your phone's settings, then try again.");
+        return;
+      }
 
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) throw new Error("Push isn't configured");
 
+      // Always start from a fresh subscription: a leftover one can be dead on the push
+      // service's side, or tied to an old VAPID key (subscribe() would then throw).
       const reg = await navigator.serviceWorker.ready;
+      const old = await reg.pushManager.getSubscription();
+      if (old) await old.unsubscribe();
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
-      await mutateApi("/api/member/push/subscribe", "POST", sub.toJSON());
+      await mutateApi("/api/member/push/subscribe", "POST", { ...sub.toJSON(), replaces: old?.endpoint });
       setSubscribed(true);
-    } catch {
-      // best-effort — ordering still works fully without push enabled
+      toast.success("Notifications enabled");
+    } catch (err) {
+      // Ordering still works fully without push — but say so instead of failing silently.
+      toast.error(err instanceof Error ? err.message : "Could not enable notifications");
     } finally {
       setLoading(false);
     }
