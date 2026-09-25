@@ -30,12 +30,20 @@ export const PATCH = route(async (_session, request: Request) => {
   if (patch.orderCutoffTime !== undefined) settings.orderCutoffTime = patch.orderCutoffTime;
   if (patch.orderReminderMinutes !== undefined) settings.orderReminderMinutes = patch.orderReminderMinutes;
   if (patch.orderConfirmedUntilTime !== undefined) settings.orderConfirmedUntilTime = patch.orderConfirmedUntilTime;
+  if (patch.lunchReminderTime !== undefined) settings.lunchReminderTime = patch.lunchReminderTime;
   if (patch.messClosedFrom !== undefined) settings.messClosedFrom = patch.messClosedFrom;
   if (patch.messClosedTo !== undefined) settings.messClosedTo = patch.messClosedTo;
   if (patch.messClosedMessage !== undefined) settings.messClosedMessage = patch.messClosedMessage;
   if (patch.weekendClosed !== undefined) settings.weekendClosed = patch.weekendClosed;
 
   if (!settings.messName) throw new ApiError(400, "Mess name cannot be empty");
+  // Only when one of the two times is being changed — an unrelated save (e.g. the mess name)
+  // must not be blocked by a combination saved before this rule existed. "HH:mm" strings
+  // compare correctly as plain strings.
+  const timesChanged = patch.lunchReminderTime !== undefined || patch.orderCutoffTime !== undefined;
+  if (timesChanged && settings.lunchReminderTime >= settings.orderCutoffTime) {
+    throw new ApiError(400, "The order reminder must be before the cutoff time");
+  }
   await settings.save();
 
   return ok(serializeSettings(settings.toObject()));

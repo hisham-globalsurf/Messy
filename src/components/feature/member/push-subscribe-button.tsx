@@ -6,15 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { mutateApi } from "@/lib/client/fetcher";
-
-function urlBase64ToUint8Array(base64String: string): BufferSource {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const bytes = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) bytes[i] = rawData.charCodeAt(i);
-  return bytes;
-}
+import { syncAdminPush } from "@/lib/client/adminPush";
+import { vapidApplicationServerKey } from "@/lib/client/vapidKey";
 
 type SaveMode = "sync" | "enable" | "replace";
 
@@ -27,8 +20,7 @@ function saveSubscription(sub: PushSubscription, mode: SaveMode, replaces?: stri
  * Retries because Chrome intermittently rejects a subscribe() made right after an unsubscribe()
  * or while a freshly deployed service worker is still activating ("Registration failed"). */
 async function freshSubscription(reg: ServiceWorkerRegistration): Promise<PushSubscription> {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  if (!publicKey) throw new Error("Push isn't configured");
+  const applicationServerKey = vapidApplicationServerKey();
 
   const old = await reg.pushManager.getSubscription();
   if (old) await old.unsubscribe().catch(() => {});
@@ -39,7 +31,7 @@ async function freshSubscription(reg: ServiceWorkerRegistration): Promise<PushSu
     try {
       return await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
+        applicationServerKey,
       });
     } catch (err) {
       lastError = err;
@@ -76,6 +68,9 @@ export function PushSubscribeButton() {
         if (saved) return;
         const fresh = await freshSubscription(reg);
         await saveSubscription(fresh, "replace", sub.endpoint);
+        // Same browser subscription backs the admin app — keep its registration on the new one too
+        // (no-op unless the admin switched notifications on in this browser).
+        await syncAdminPush().catch(() => {});
       })
       .catch(() => setSubscribed(false));
   }, []);
@@ -94,6 +89,7 @@ export function PushSubscribeButton() {
       // The server makes this device the member's only subscription and sends a confirmation
       // push to it — a rejection here means delivery genuinely doesn't work on this device.
       await saveSubscription(sub, "enable");
+      await syncAdminPush().catch(() => {});
       setSubscribed(true);
       toast.success("Notifications enabled");
     } catch (err) {

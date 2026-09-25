@@ -26,6 +26,9 @@ const settingsSchema = new Schema(
     /** After cutoff, members with a pending order see "order confirmed" until this time ("HH:mm",
      * IST), then "order delivered" for the rest of the day. */
     orderConfirmedUntilTime: { type: String, required: true, default: "12:30" },
+    /** Daily time ("HH:mm", IST) the "order before the cut-off" push goes to members who haven't
+     * ordered yet — must be before orderCutoffTime. */
+    lunchReminderTime: { type: String, required: true, default: "09:30" },
     /** Mess-closed period (UTC midnight, inclusive both ends) — while today falls in this range,
      * members see a closure notice instead of the ordering form. Auto-clears once `to` passes;
      * nothing needs to run to "turn it off" since it's just a date comparison every time. */
@@ -38,6 +41,9 @@ const settingsSchema = new Schema(
     /** IST date ("YYYY-MM-DD") the daily lunch-reminder push last went out — the cron's
      * once-per-day guard against duplicate deliveries. */
     lunchReminderSentOn: { type: String, default: null },
+    /** IST date ("YYYY-MM-DD") the after-cutoff job last moved the queue and pushed the admin the
+     * supplier message — same once-per-day guard. */
+    supplierDispatchOn: { type: String, default: null },
   },
   { timestamps: { createdAt: false, updatedAt: true } },
 );

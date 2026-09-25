@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import { SendNotificationDialog } from "@/components/feature/send-notification-d
 import { mutateApi } from "@/lib/client/fetcher";
 import { useSettings } from "@/lib/client/hooks";
 import { useAdminRealtime } from "@/lib/client/useAdminRealtime";
+import { disableAdminPush, syncAdminPush } from "@/lib/client/adminPush";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -42,9 +43,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // wiring and the plain-fetch fallback it relies on when navigating to the Reports tab directly.
   useAdminRealtime();
 
+  // Keeps this device's admin notifications registered on the browser's live subscription.
+  useEffect(() => {
+    syncAdminPush().catch(() => {});
+  }, []);
+
   async function logout() {
     setLoggingOut(true);
     try {
+      // A signed-out device shouldn't keep getting the supplier push. Best-effort.
+      await disableAdminPush().catch(() => {});
       await mutateApi("/api/auth/logout", "POST");
       toast.success("Signed out");
       router.replace("/login");

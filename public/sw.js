@@ -54,15 +54,25 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/order";
   const target = new URL(url, self.location.origin);
+
+  // Outside links (the admin's supplier push opens a wa.me WhatsApp chat) go straight out —
+  // the OS hands them to the WhatsApp app.
+  if (target.origin !== self.location.origin) {
+    event.waitUntil(self.clients.openWindow(target.href));
+    return;
+  }
+
+  // Member pages (/order…) and admin pages (everything else) are separate apps on this origin —
+  // reuse an open window of the right app only, never hijack the other one. Matched by path
+  // prefix, never a loose substring ("/order" used to also match any URL merely containing it).
+  const isMemberPath = (pathname) => pathname === "/order" || pathname.startsWith("/order/");
+  const wantMember = isMemberPath(target.pathname);
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
-      // Reuse an open member window (e.g. /order/settings) and bring it to the notification's
-      // page. Matched by path prefix of the member app, never a loose substring — an open admin
-      // tab must not be hijacked, and "/order" used to also match any URL merely containing it.
-      const memberWindow = clients.find((c) => new URL(c.url).pathname.startsWith("/order"));
-      if (memberWindow) {
-        const focused = await memberWindow.focus();
-        if (new URL(memberWindow.url).pathname !== target.pathname && "navigate" in focused) {
+      const appWindow = clients.find((c) => isMemberPath(new URL(c.url).pathname) === wantMember);
+      if (appWindow) {
+        const focused = await appWindow.focus();
+        if (new URL(appWindow.url).pathname !== target.pathname && "navigate" in focused) {
           return focused.navigate(target.href).catch(() => focused);
         }
         return focused;
@@ -76,6 +86,8 @@ self.addEventListener("notificationclick", (event) => {
 // rotation, long inactivity). Without this, the server keeps the dead endpoint and the member
 // silently stops getting pushes until they happen to re-enable. Resubscribe with the same key
 // and tell the server, replacing the old endpoint. Same-origin fetch carries the session cookie.
+// The admin app shares this subscription, so its registration is carried over too ("rotate" only
+// updates an endpoint that was already an admin device; 401 when no admin is signed in here).
 self.addEventListener("pushsubscriptionchange", (event) => {
   event.waitUntil(
     (async () => {
@@ -84,11 +96,14 @@ self.addEventListener("pushsubscriptionchange", (event) => {
         event.newSubscription ||
         (key ? await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) : null);
       if (!sub) return;
-      await fetch("/api/member/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...sub.toJSON(), mode: "replace", replaces: event.oldSubscription?.endpoint }),
-      });
+      const replaces = event.oldSubscription?.endpoint;
+      const post = (path, mode) =>
+        fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...sub.toJSON(), mode, replaces }),
+        }).catch(() => {});
+      await Promise.all([post("/api/member/push/subscribe", "replace"), post("/api/push/subscribe", "rotate")]);
     })(),
   );
 });

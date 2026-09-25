@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { ReportsList } from "@/components/feature/reports-list";
+import { AdminPushToggle } from "@/components/feature/admin-push-toggle";
 import { ListSkeleton } from "@/components/feature/states";
 import { Spinner } from "@/components/ui/spinner";
 import { useSettings } from "@/lib/client/hooks";
@@ -40,6 +41,18 @@ export default function SettingsPage() {
 
         <TabsContent value="general" className="space-y-4 pt-4 lg:space-y-6">
           <PasswordForm />
+          <Card>
+            <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>
+                After each cutoff, today&apos;s orders move to entries and you get a push — tap it to open WhatsApp with
+                the supplier message ready to send.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdminPushToggle />
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
@@ -292,6 +305,7 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
   const [cutoff, setCutoff] = useState(settings.orderCutoffTime);
   const [reminderMinutes, setReminderMinutes] = useState(String(settings.orderReminderMinutes));
   const [confirmedUntil, setConfirmedUntil] = useState(settings.orderConfirmedUntilTime);
+  const [lunchReminder, setLunchReminder] = useState(settings.lunchReminderTime);
   const [saving, setSaving] = useState(false);
 
   async function save(e: React.FormEvent) {
@@ -302,6 +316,7 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
         orderCutoffTime: cutoff,
         orderReminderMinutes: Number(reminderMinutes),
         orderConfirmedUntilTime: confirmedUntil,
+        lunchReminderTime: lunchReminder,
       });
       await globalMutate("/api/settings");
       toast.success("Member ordering settings saved");
@@ -321,6 +336,16 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
       <CardContent>
         <form onSubmit={save} className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="lunch-reminder">Remind members who haven&apos;t ordered at (IST)</Label>
+            <TimeInput
+              id="lunch-reminder"
+              value={lunchReminder}
+              onChange={(e) => setLunchReminder(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground">A push notification, once a day. Must be before the cutoff.</p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="order-cutoff">Cutoff time (IST)</Label>
             <TimeInput
               id="order-cutoff"
@@ -328,6 +353,10 @@ function CutoffTimeForm({ settings }: { settings: Settings }) {
               onChange={(e) => setCutoff(e.target.value)}
               required
             />
+            <p className="text-xs text-muted-foreground">
+              Right after this, today&apos;s orders move to entries automatically. With notifications on (General
+              tab), you get a push that opens WhatsApp with the supplier message.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="order-reminder">Show countdown when this many minutes remain</Label>

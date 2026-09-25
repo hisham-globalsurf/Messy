@@ -96,6 +96,8 @@ export interface Settings {
   /** After cutoff, members with a pending order see "order confirmed" until this time ("HH:mm",
    * IST), then "order delivered" for the rest of the day. */
   orderConfirmedUntilTime: string;
+  /** Daily time ("HH:mm", IST) the order-reminder push goes to members who haven't ordered yet. */
+  lunchReminderTime: string;
   /** Mess-closed period ("YYYY-MM-DD", inclusive both ends) — null when no closure is set. */
   messClosedFrom: string | null;
   messClosedTo: string | null;

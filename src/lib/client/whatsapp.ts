@@ -1,21 +1,9 @@
 "use client";
 
 import { downloadFile, renderCardToFile } from "./share";
+import { whatsAppChatUrl } from "@/lib/whatsappUrl";
 
 export type WhatsAppShareResult = "shared" | "clipboard" | "downloaded";
-
-export function normalizePhone(phone: string): string {
-  return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
-}
-
-function chatUrl(phone: string | undefined): string {
-  return phone ? `https://wa.me/${normalizePhone(phone)}` : "https://wa.me/";
-}
-
-/** A wa.me link with prefilled text — opens that chat directly with the message ready to send. */
-export function whatsAppTextUrl(phone: string, text: string): string {
-  return `${chatUrl(phone)}?text=${encodeURIComponent(text)}`;
-}
 
 /**
  * Render a share card and hand it to WhatsApp.
@@ -40,7 +28,7 @@ export async function shareToWhatsApp(node: HTMLElement, filename: string, phone
     return "shared";
   }
 
-  const url = chatUrl(phone);
+  const url = whatsAppChatUrl(phone);
 
   try {
     const ClipboardItemCtor = (window as unknown as { ClipboardItem?: typeof ClipboardItem }).ClipboardItem;

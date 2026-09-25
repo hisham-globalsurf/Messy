@@ -119,6 +119,11 @@ export const settingsUpdateSchema = z
       .trim()
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 12:30")
       .optional(),
+    lunchReminderTime: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm, e.g. 09:30")
+      .optional(),
     messClosedFrom: z.coerce.date().nullable().optional(),
     messClosedTo: z.coerce.date().nullable().optional(),
     messClosedMessage: z.string().trim().max(300).optional(),

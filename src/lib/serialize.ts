@@ -44,6 +44,7 @@ interface SettingsLike {
   orderCutoffTime: string;
   orderReminderMinutes: number;
   orderConfirmedUntilTime: string;
+  lunchReminderTime?: string;
   messClosedFrom?: Date | string | null;
   messClosedTo?: Date | string | null;
   messClosedMessage?: string;
@@ -111,6 +112,7 @@ export function serializeSettings(doc: SettingsLike): Settings {
     orderCutoffTime: doc.orderCutoffTime,
     orderReminderMinutes: doc.orderReminderMinutes,
     orderConfirmedUntilTime: doc.orderConfirmedUntilTime,
+    lunchReminderTime: doc.lunchReminderTime || "09:30",
     messClosedFrom: doc.messClosedFrom ? new Date(doc.messClosedFrom).toISOString().slice(0, 10) : null,
     messClosedTo: doc.messClosedTo ? new Date(doc.messClosedTo).toISOString().slice(0, 10) : null,
     messClosedMessage: doc.messClosedMessage ?? "",

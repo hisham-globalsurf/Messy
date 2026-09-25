@@ -1,6 +1,7 @@
 import "server-only";
 import webpush from "web-push";
 import { PushSubscriptionModel } from "@/models/PushSubscription";
+import { AdminPushSubscriptionModel } from "@/models/AdminPushSubscription";
 import { PersonModel } from "@/models/Person";
 import type { Types } from "mongoose";
 
@@ -23,10 +24,21 @@ export interface PushPayload {
   url?: string;
 }
 
-/** Sends to every subscription, pruning any that come back expired/gone (404/410). */
+export interface PushOptions {
+  /** How long the push service keeps retrying an offline device, in seconds (default a day).
+   * Time-bound pushes set this to when they stop being true — a late one is worse than none. */
+  ttlSeconds?: number;
+}
+
+const DEFAULT_TTL_SECONDS = 24 * 60 * 60;
+
+/** Sends to every subscription, pruning any that come back expired/gone (404/410) from the
+ * collection they were read from (`collection`). */
 async function sendToSubscriptions(
   subs: { _id: Types.ObjectId; endpoint: string; keys: { p256dh: string; auth: string } }[],
   payload: PushPayload,
+  { ttlSeconds = DEFAULT_TTL_SECONDS }: PushOptions = {},
+  collection: "member" | "admin" = "member",
 ): Promise<{ sent: number; pruned: number }> {
   ensureConfigured();
   const body = JSON.stringify(payload);
@@ -38,11 +50,11 @@ async function sendToSubscriptions(
       try {
         // urgency "high": Android (FCM) otherwise treats pushes as normal priority and can hold
         // them while the phone dozes, so order reminders showed up late or not at all.
-        // TTL: the push service keeps retrying an offline device for a day, then drops it —
+        // TTL: the push service keeps retrying an offline device this long, then drops it —
         // a stale "order now" reminder is worse than none.
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, body, {
           urgency: "high",
-          TTL: 24 * 60 * 60,
+          TTL: Math.max(0, Math.floor(ttlSeconds)),
         });
         sent += 1;
       } catch (err) {
@@ -59,7 +71,8 @@ async function sendToSubscriptions(
   );
 
   if (toPrune.length > 0) {
-    await PushSubscriptionModel.deleteMany({ _id: { $in: toPrune } });
+    if (collection === "admin") await AdminPushSubscriptionModel.deleteMany({ _id: { $in: toPrune } });
+    else await PushSubscriptionModel.deleteMany({ _id: { $in: toPrune } });
   }
   return { sent, pruned: toPrune.length };
 }
@@ -85,4 +98,23 @@ export async function sendPushToAll(payload: PushPayload) {
   const active = await PersonModel.find(ACTIVE_PERSON, { _id: 1 }).lean();
   const subs = await PushSubscriptionModel.find({ personId: { $in: active.map((p) => p._id) } }).lean();
   return sendToSubscriptions(subs, payload);
+}
+
+/** Several members at once — two queries in total, rather than two per person. */
+export async function sendPushToPersons(personIds: string[], payload: PushPayload, options?: PushOptions) {
+  const active = await PersonModel.find({ _id: { $in: personIds }, ...ACTIVE_PERSON }, { _id: 1 }).lean();
+  const subs = await PushSubscriptionModel.find({ personId: { $in: active.map((p) => p._id) } }).lean();
+  return sendToSubscriptions(subs, payload, options);
+}
+
+/** Every device where an admin turned on notifications. */
+export async function sendPushToAdmins(payload: PushPayload, options?: PushOptions) {
+  const subs = await AdminPushSubscriptionModel.find().lean();
+  return sendToSubscriptions(subs, payload, options, "admin");
+}
+
+/** One admin device — the confirmation push right after the admin turns notifications on. */
+export async function sendPushToAdminEndpoint(endpoint: string, payload: PushPayload) {
+  const subs = await AdminPushSubscriptionModel.find({ endpoint }).lean();
+  return sendToSubscriptions(subs, payload, {}, "admin");
 }
