@@ -21,7 +21,13 @@ export default function MemberSettingsPage() {
   async function logout() {
     setLoggingOut(true);
     try {
-      await mutateApi("/api/member/logout", "POST");
+      // This device's push subscription goes too — the server drops it and the browser forgets
+      // it, so the next person to sign in here doesn't get this member's pushes. getRegistration
+      // (not .ready, which never settles without a service worker) keeps logout from hanging.
+      const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration().catch(() => undefined) : undefined;
+      const sub = await reg?.pushManager.getSubscription().catch(() => null);
+      await mutateApi("/api/member/logout", "POST", { endpoint: sub?.endpoint });
+      await sub?.unsubscribe().catch(() => {});
       toast.success("Signed out");
       router.replace("/order/login");
       router.refresh();

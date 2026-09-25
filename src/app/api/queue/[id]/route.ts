@@ -1,7 +1,9 @@
 import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
-import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
+import { orderDayLabel } from "@/lib/cutoff";
+import { notifyOrderChange } from "@/lib/notifyMember";
+import { publishQueueChanged } from "@/lib/ably";
 import { ApiError, ok, route } from "@/lib/api";
 
 export const DELETE = route(async (_session, _request: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -12,11 +14,23 @@ export const DELETE = route(async (_session, _request: Request, ctx: { params: P
   const row = await QueueOrderModel.findByIdAndDelete(id);
   if (!row) throw new ApiError(404, "Order not found");
 
-  // Best-effort — a member with this order's tab open should see it disappear immediately
-  // rather than waiting to refocus the tab.
+  // Everyone on the removed order is told, on screen and by push — a half order names the
+  // other person to each side.
+  const partnerId = row.partnerPersonId?.toString() ?? null;
+  const when = orderDayLabel(row.date.toISOString().slice(0, 10));
   await Promise.all([
-    publishOrderUpdate(row.personId.toString()),
-    row.partnerPersonId ? publishOrderUpdate(row.partnerPersonId.toString()) : null,
+    notifyOrderChange([
+      {
+        personId: row.personId.toString(),
+        body:
+          partnerId && row.partnerName
+            ? `Your half order with ${row.partnerName} for ${when} was removed by the admin.`
+            : `Your order for ${when} was removed by the admin.`,
+      },
+      ...(partnerId
+        ? [{ personId: partnerId, body: `Your half order with ${row.personName} for ${when} was removed by the admin.` }]
+        : []),
+    ]),
     publishQueueChanged(),
   ]);
 

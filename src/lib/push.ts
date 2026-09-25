@@ -1,6 +1,7 @@
 import "server-only";
 import webpush from "web-push";
 import { PushSubscriptionModel } from "@/models/PushSubscription";
+import { PersonModel } from "@/models/Person";
 import type { Types } from "mongoose";
 
 let configured = false;
@@ -63,7 +64,13 @@ async function sendToSubscriptions(
   return { sent, pruned: toPrune.length };
 }
 
+/** Blocked members can't use the app, and deleted ones no longer exist — neither should keep
+ * getting pushes on a device that subscribed back when they could. */
+const ACTIVE_PERSON = { blocked: { $ne: true } };
+
 export async function sendPushToPerson(personId: string, payload: PushPayload) {
+  const person = await PersonModel.exists({ _id: personId, ...ACTIVE_PERSON });
+  if (!person) return { sent: 0, pruned: 0 };
   const subs = await PushSubscriptionModel.find({ personId }).lean();
   return sendToSubscriptions(subs, payload);
 }
@@ -75,6 +82,7 @@ export async function sendPushToEndpoint(endpoint: string, payload: PushPayload)
 }
 
 export async function sendPushToAll(payload: PushPayload) {
-  const subs = await PushSubscriptionModel.find().lean();
+  const active = await PersonModel.find(ACTIVE_PERSON, { _id: 1 }).lean();
+  const subs = await PushSubscriptionModel.find({ personId: { $in: active.map((p) => p._id) } }).lean();
   return sendToSubscriptions(subs, payload);
 }

@@ -2,6 +2,8 @@
  * own timezone (Vercel defaults to UTC) — this is a single-mess, single-timezone app.
  * Safe to import from both client and server code (pure Date math, no Node APIs). */
 
+import { weekdayName } from "@/lib/format";
+
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 function istNow(): Date {
@@ -30,6 +32,14 @@ export function tomorrowIst(): string {
   const d = istNow();
   d.setUTCDate(d.getUTCDate() + 1);
   return toDateInputValue(d);
+}
+
+/** "today" / "tomorrow" / weekday name ("Monday") for an order date ("YYYY-MM-DD") — the
+ * wording used in member push notifications about an order. */
+export function orderDayLabel(dateInputValue: string): string {
+  if (dateInputValue === todayIst()) return "today";
+  if (dateInputValue === tomorrowIst()) return "tomorrow";
+  return weekdayName(dateInputValue);
 }
 
 /** The next date after `dateInputValue` ("YYYY-MM-DD") for which `isClosed` returns false —

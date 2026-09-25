@@ -2,8 +2,9 @@ import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
 import { SettingsModel } from "@/models/Settings";
-import { isDateOrderable } from "@/lib/cutoff";
-import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
+import { isDateOrderable, orderDayLabel } from "@/lib/cutoff";
+import { notifyOrderChange } from "@/lib/notifyMember";
+import { publishQueueChanged } from "@/lib/ably";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 
@@ -27,8 +28,16 @@ export const DELETE = memberRoute(
 
     const partnerId = row.partnerPersonId?.toString() ?? null;
     await row.deleteOne();
-    // Deleting a half order un-pairs the partner live, same as pairing them notified on submit.
-    await Promise.all([partnerId ? publishOrderUpdate(partnerId) : null, publishQueueChanged()]);
+    // Deleting a half order un-pairs the partner live and by push, same as pairing them did on submit.
+    await Promise.all([
+      partnerId
+        ? notifyOrderChange(
+            [{ personId: partnerId, body: `${session.name} cancelled their half order with you for ${orderDayLabel(dateStr)}.` }],
+            settings.messName,
+          )
+        : null,
+      publishQueueChanged(),
+    ]);
     return ok({ ok: true });
   },
 );

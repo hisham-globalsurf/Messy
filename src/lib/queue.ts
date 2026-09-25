@@ -1,11 +1,11 @@
 import "server-only";
-import mongoose, { type Types } from "mongoose";
+import mongoose from "mongoose";
 import { QueueOrderModel } from "@/models/QueueOrder";
 import { MealEntryModel, computeDerived, type FullEaterEntryDoc, type HalfPairEntryDoc } from "@/models/MealEntry";
 import { SettingsModel } from "@/models/Settings";
 import { resolveFullEater, resolveHalfPair, variantPriceLookup } from "@/lib/foodVariants";
-import { sendPushToPerson } from "@/lib/push";
-import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
+import { notifyOrderChange, type OrderNotice } from "@/lib/notifyMember";
+import { publishQueueChanged } from "@/lib/ably";
 import { ApiError } from "@/lib/api";
 import { NAME_COLLATION, entryPersonFilter, findFullEater, findHalfPair, halfPairPartner } from "@/lib/entryLookup";
 
@@ -128,8 +128,7 @@ export async function moveQueueToEntries(
   const session = await mongoose.startSession();
   try {
     let result: { entryId: string; movedCount: number } | null = null;
-    let notifyPersonIds: Types.ObjectId[] = [];
-    let pushTargets: { id: Types.ObjectId; body: string }[] = [];
+    let notices: OrderNotice[] = [];
     let messName = "Messy";
 
     await session.withTransaction(async () => {
@@ -203,16 +202,15 @@ export async function moveQueueToEntries(
 
       await QueueOrderModel.deleteMany({ _id: { $in: rows.map((r) => r._id) } }, { session });
       result = { entryId, movedCount: rows.length };
-      notifyPersonIds = rows.flatMap((r) => [r.personId, ...(r.partnerPersonId ? [r.partnerPersonId] : [])]);
       // Half-pair rows only exist once (on the submitter's side) — name the other person
       // in each side's push so both know who they're confirmed with, not just that "a meal" is on.
-      pushTargets = rows.flatMap((r) =>
+      notices = rows.flatMap((r) =>
         r.kind === "half" && r.partnerPersonId && r.partnerName
           ? [
-              { id: r.personId, body: `Your order with ${r.partnerName} is confirmed and it’s on the way!` },
-              { id: r.partnerPersonId, body: `Your order with ${r.personName} is confirmed and it’s on the way!` },
+              { personId: r.personId.toString(), body: `Your order with ${r.partnerName} is confirmed and it’s on the way!` },
+              { personId: r.partnerPersonId.toString(), body: `Your order with ${r.personName} is confirmed and it’s on the way!` },
             ]
-          : [{ id: r.personId, body: "Your meal is confirmed and it’s on the way!" }],
+          : [{ personId: r.personId.toString(), body: "Your meal is confirmed and it’s on the way!" }],
       );
     });
 
@@ -221,17 +219,7 @@ export async function moveQueueToEntries(
     // Best-effort, outside the transaction — neither notification path should undo the move.
     // Ably covers a member's already-open tab instantly; push covers the case where they've
     // closed it (Ably needs a live connection, so it can't reach a closed tab on its own).
-    await Promise.all([
-      publishQueueChanged(),
-      ...notifyPersonIds.map((id) => publishOrderUpdate(id.toString())),
-      ...pushTargets.map((target) =>
-        sendPushToPerson(target.id.toString(), {
-          title: messName,
-          body: target.body,
-          url: "/order",
-        }).catch((err) => console.error("Push send failed:", err)),
-      ),
-    ]);
+    await Promise.all([publishQueueChanged(), notifyOrderChange(notices, messName)]);
 
     return result;
   } finally {

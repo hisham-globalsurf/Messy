@@ -3,13 +3,13 @@ import { QueueOrderModel } from "@/models/QueueOrder";
 import { PersonModel } from "@/models/Person";
 import { SettingsModel } from "@/models/Settings";
 import { memberOrderSchema } from "@/lib/validation";
-import { toUtcDay, weekdayName } from "@/lib/format";
-import { isDateOrderable, nextOpenDateAfter, queueAutoClearAt, todayIst, tomorrowIst } from "@/lib/cutoff";
+import { toUtcDay } from "@/lib/format";
+import { isDateOrderable, nextOpenDateAfter, orderDayLabel, queueAutoClearAt, todayIst } from "@/lib/cutoff";
 import { closureOn } from "@/lib/messClosure";
 import { assertPeopleAvailable, findConfirmedOrder, findLastOrderDraft } from "@/lib/queue";
 import { serializeQueueOrder, serializeSettings } from "@/lib/serialize";
-import { publishOrderUpdate, publishQueueChanged } from "@/lib/ably";
-import { sendPushToPerson } from "@/lib/push";
+import { publishQueueChanged } from "@/lib/ably";
+import { notifyOrderChange, type OrderNotice } from "@/lib/notifyMember";
 import { ApiError, ok } from "@/lib/api";
 import { memberRoute } from "@/lib/memberApi";
 import type { MemberDateOrder } from "@/types";
@@ -121,25 +121,18 @@ export const POST = memberRoute(async (session, request: Request) => {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  // Tell the affected partner(s) live: whoever is newly paired should see it appear, and
-  // whoever was paired before (now dropped or swapped for someone else) should see it clear.
+  // Whoever is newly paired should see it appear, and whoever was paired before (now dropped or
+  // swapped for someone else) should see it clear — both named, on screen and by push.
   const oldPartnerId = existingOwnRow?.partnerPersonId?.toString() ?? null;
-  const newlyPaired = partnerPersonId && partnerPersonId !== oldPartnerId ? partnerPersonId : null;
-  // The newly paired partner also gets a push naming who paired them — same shape as the
-  // confirmation push in moveQueueToEntries — since they may not have the app open at all.
-  const when = dateStr === todayDate ? "today" : dateStr === tomorrowIst() ? "tomorrow" : weekdayName(dateStr);
-  await Promise.all([
-    oldPartnerId && oldPartnerId !== partnerPersonId ? publishOrderUpdate(oldPartnerId) : null,
-    newlyPaired ? publishOrderUpdate(newlyPaired) : null,
-    newlyPaired
-      ? sendPushToPerson(newlyPaired, {
-          title: settings.messName,
-          body: `${session.name} placed a half order with you for ${when}.`,
-          url: "/order",
-        }).catch((err) => console.error("Push send failed:", err))
-      : null,
-    publishQueueChanged(),
-  ]);
+  const when = orderDayLabel(dateStr);
+  const notices: OrderNotice[] = [];
+  if (oldPartnerId && oldPartnerId !== partnerPersonId) {
+    notices.push({ personId: oldPartnerId, body: `${session.name} removed you from their half order for ${when}.` });
+  }
+  if (partnerPersonId && partnerPersonId !== oldPartnerId) {
+    notices.push({ personId: partnerPersonId, body: `${session.name} placed a half order with you for ${when}.` });
+  }
+  await Promise.all([notifyOrderChange(notices, settings.messName), publishQueueChanged()]);
 
   return ok(serializeQueueOrder(updated.toObject()));
 });

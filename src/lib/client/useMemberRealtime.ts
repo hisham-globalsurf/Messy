@@ -35,9 +35,10 @@ export function useMemberRealtime(personId: string | null): void {
     const memberChannel = client.channels.get(`member:${personId}`);
     const broadcastChannel = client.channels.get(NOTIFICATIONS_BROADCAST_CHANNEL);
 
+    // Order changes never create in-app notifications (those arrive as "notifications-changed"),
+    // so only the order data needs refetching here.
     function onOrderUpdated() {
       globalMutate("/api/member/order");
-      globalMutate("/api/member/notifications");
     }
 
     function onNotificationsChanged() {

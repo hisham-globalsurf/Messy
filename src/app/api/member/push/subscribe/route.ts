@@ -23,8 +23,11 @@ const subscribeSchema = z.object({
    * "enable": the member tapped Enable — this device becomes their only subscription (old
    * installs/devices are dropped — a still-live one gets "unknown" from its next "sync" and
    * re-registers itself) and a confirmation push is sent to prove delivery end-to-end.
-   * "replace": the service worker's pushsubscriptionchange — swap `replaces` for this one. */
-  mode: z.enum(["sync", "enable", "replace"]).default("enable"),
+   * "replace": save this one, dropping `replaces` if given (the service worker's
+   * pushsubscriptionchange, or a sync that had to resubscribe). The default because it's the only
+   * harmless one — a request without a mode (e.g. a tab still running pre-mode client code) must
+   * not wipe the member's other devices and fire a confirmation push the way "enable" does. */
+  mode: z.enum(["sync", "enable", "replace"]).default("replace"),
   replaces: z.string().optional(),
 });
 

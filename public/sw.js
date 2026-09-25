@@ -53,11 +53,21 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/order";
+  const target = new URL(url, self.location.origin);
   event.waitUntil(
-    self.clients.matchAll({ type: "window" }).then((clients) => {
-      const existing = clients.find((c) => c.url.includes(url));
-      if (existing) return existing.focus();
-      return self.clients.openWindow(url);
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      // Reuse an open member window (e.g. /order/settings) and bring it to the notification's
+      // page. Matched by path prefix of the member app, never a loose substring — an open admin
+      // tab must not be hijacked, and "/order" used to also match any URL merely containing it.
+      const memberWindow = clients.find((c) => new URL(c.url).pathname.startsWith("/order"));
+      if (memberWindow) {
+        const focused = await memberWindow.focus();
+        if (new URL(memberWindow.url).pathname !== target.pathname && "navigate" in focused) {
+          return focused.navigate(target.href).catch(() => focused);
+        }
+        return focused;
+      }
+      return self.clients.openWindow(target.href);
     }),
   );
 });

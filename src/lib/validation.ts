@@ -156,8 +156,9 @@ export const notificationCreateSchema = z
     message: z.string().trim().min(1, "Message is required").max(500),
     push: z.boolean(),
     inApp: z.boolean(),
-    /** Empty (the default) means every member. */
-    personIds: z.array(z.string()).optional().default([]),
+    /** Empty (the default) means every member. Checked as ids up front — a malformed one would
+     * otherwise pass here and then crash the Notification insert with a cast error (500). */
+    personIds: z.array(z.string().regex(/^[a-f\d]{24}$/i, "Invalid recipient")).optional().default([]),
   })
   .refine((v) => v.push || v.inApp, { message: "Pick at least one delivery method", path: ["push"] });
 
