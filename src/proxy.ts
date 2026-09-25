@@ -8,6 +8,8 @@ const PUBLIC_API = [
   // slash matters: without it, a future route like /api/members-export would
   // accidentally match this prefix and skip the admin-session check.
   "/api/member/",
+  // Scheduled jobs authenticate with CRON_SECRET inside the route itself.
+  "/api/cron/",
 ];
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {

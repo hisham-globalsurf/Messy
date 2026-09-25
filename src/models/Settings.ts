@@ -35,6 +35,9 @@ const settingsSchema = new Schema(
     /** When true, the mess is treated as closed every Saturday and Sunday — same effect as
      * messClosedFrom/To but recurring weekly instead of a one-off range. */
     weekendClosed: { type: Boolean, required: true, default: false },
+    /** IST date ("YYYY-MM-DD") the daily lunch-reminder push last went out — the cron's
+     * once-per-day guard against duplicate deliveries. */
+    lunchReminderSentOn: { type: String, default: null },
   },
   { timestamps: { createdAt: false, updatedAt: true } },
 );
