@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { mutate as globalMutate } from "swr";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -510,76 +510,151 @@ function PasswordForm() {
   const [currentPassword, setCurrent] = useState("");
   const [newPassword, setNew] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const newRef = useRef<HTMLInputElement>(null);
+  const currentRef = useRef<HTMLInputElement>(null);
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  function reset() {
+    setVerified(false);
+    setNew("");
+    setConfirm("");
+  }
+
+  async function verify() {
+    setBusy(true);
+    try {
+      await mutateApi("/api/auth/verify-password", "POST", { currentPassword });
+      setVerified(true);
+      // Wait for the reveal to start before focusing, or the browser scrolls to a collapsed field.
+      setTimeout(() => newRef.current?.focus(), 150);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not verify password");
+      currentRef.current?.select();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save() {
     if (newPassword !== confirm) {
       toast.error("New passwords don’t match");
       return;
     }
-    setSaving(true);
+    setBusy(true);
     try {
       await mutateApi("/api/auth/change-password", "POST", { currentPassword, newPassword });
       toast.success("Password changed");
       setCurrent("");
-      setNew("");
-      setConfirm("");
+      reset();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not change password");
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (verified) save();
+    else verify();
+  }
+
+  function editCurrent() {
+    reset();
+    setTimeout(() => currentRef.current?.select(), 0);
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Admin password</CardTitle>
-        <CardDescription>You’ll stay signed in on this device.</CardDescription>
+        <CardDescription>
+          {verified ? "Choose a new password. You’ll stay signed in on this device." : "Enter your current password to continue."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={save} className="space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="current">Current password</Label>
-            <Input
-              id="current"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="new">New password</Label>
-              <Input
-                id="new"
-                type="password"
-                autoComplete="new-password"
-                value={newPassword}
-                onChange={(e) => setNew(e.target.value)}
-                required
-                minLength={6}
-              />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="current">Current password</Label>
+              {verified && (
+                <button
+                  type="button"
+                  onClick={editCurrent}
+                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Change
+                </button>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm new password</Label>
+            <div className="relative">
               <Input
-                id="confirm"
+                ref={currentRef}
+                id="current"
                 type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrent(e.target.value)}
+                readOnly={verified}
                 required
-                minLength={6}
+                className={verified ? "pr-9 text-muted-foreground" : undefined}
+              />
+              <Check
+                aria-hidden
+                className={`pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-emerald-600 transition-all duration-300 dark:text-emerald-400 ${
+                  verified ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                }`}
               />
             </div>
           </div>
-          <Button type="submit" disabled={saving}>
-            {saving && <Spinner />}
-            {saving ? "Updating…" : "Change password"}
+
+          {/* grid-rows 0fr→1fr animates to the content's natural height without measuring it. */}
+          <div
+            aria-hidden={!verified}
+            inert={!verified}
+            className={`grid transition-all duration-300 ease-out ${
+              verified ? "grid-rows-[1fr] opacity-100" : "-mt-4 grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div
+                className={`grid gap-3 p-px transition-transform duration-300 ease-out sm:grid-cols-2 ${
+                  verified ? "translate-y-0" : "-translate-y-2"
+                }`}
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="new">New password</Label>
+                  <Input
+                    ref={newRef}
+                    id="new"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNew(e.target.value)}
+                    required={verified}
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm">Confirm new password</Label>
+                  <Input
+                    id="confirm"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required={verified}
+                    minLength={6}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={busy || !currentPassword}>
+            {busy && <Spinner />}
+            {verified ? (busy ? "Updating…" : "Change password") : busy ? "Verifying…" : "Continue"}
           </Button>
         </form>
       </CardContent>
