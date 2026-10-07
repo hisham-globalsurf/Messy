@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronDown, MoreVertical } from "lucide-react";
+import { BellRing, CheckCircle2, ChevronDown, MoreVertical } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,6 +41,8 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState<"unsettle" | "delete-entries" | null>(null);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifying, setNotifying] = useState(false);
   const { data: detail, error, isLoading, mutate } = useSettlementDetail(open ? settlement._id : null);
 
   const periodLabel = `${formatDate(settlement.dateFrom)} — ${formatDate(settlement.dateTo)}`;
@@ -56,6 +58,22 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
       toast.error(err instanceof Error ? err.message : "Could not delete settlement");
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function onNotify() {
+    setNotifying(true);
+    try {
+      const { notified } = await mutateApi<{ notified: number; delivered: number }>(
+        `/api/settlements/${settlement._id}/notify`,
+        "POST",
+      );
+      toast.success(`Payment reminder sent to ${notified} member${notified === 1 ? "" : "s"}`);
+      setNotifyOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send reminder");
+    } finally {
+      setNotifying(false);
     }
   }
 
@@ -83,6 +101,17 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
             <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
           </div>
         </CollapsibleTrigger>
+        {settlement.dueAmount > 0 && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-9 shrink-0 text-muted-foreground"
+            onClick={() => setNotifyOpen(true)}
+            aria-label="Remind members to pay their split"
+          >
+            <BellRing className="size-4" />
+          </Button>
+        )}
         <Button
           size="icon"
           variant="ghost"
@@ -116,6 +145,31 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
           </ul>
         )}
       </CollapsibleContent>
+
+      <AlertDialog open={notifyOpen} onOpenChange={(v) => !notifying && setNotifyOpen(v)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send payment reminder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every member who still owes money for {periodLabel} gets a notification with their own
+              amount, asking them to pay their split on GPay. Members already fully paid are skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={notifying}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                onNotify();
+              }}
+              disabled={notifying}
+            >
+              {notifying && <Spinner />}
+              Send reminder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirming} onOpenChange={(v) => !deleting && setConfirming(v)}>
         <AlertDialogContent>
