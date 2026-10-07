@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { CalendarDays, CalendarX2, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarCheck2, CalendarDays, CalendarX2, Users } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ListSkeleton } from "@/components/feature/states";
-import { useMemberHistory } from "@/lib/client/hooks";
-import { formatMoney, todayInputValue } from "@/lib/format";
+import { useMemberHistory, type MemberHistoryPeriod } from "@/lib/client/hooks";
+import { formatDate, formatDateShort, formatMoney, todayInputValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface DayEntry {
@@ -26,8 +26,29 @@ interface Props {
   currency: string;
 }
 
+function periodRange(p: MemberHistoryPeriod) {
+  return `${formatDateShort(p.dateFrom)} – ${formatDateShort(p.dateTo)}`;
+}
+
 export function HistorySheet({ open, onOpenChange, currency }: Props) {
-  const { data, isLoading } = useMemberHistory(open);
+  // null = current (unsettled) period — always what the sheet opens on.
+  const [periodId, setPeriodId] = useState<string | null>(null);
+  const { data, isLoading } = useMemberHistory(open, periodId);
+
+  // Every response carries the full period list; hold on to the last one so the picker
+  // doesn't vanish while a newly selected period is loading.
+  const [periods, setPeriods] = useState<MemberHistoryPeriod[]>([]);
+  if (data && data.periods !== periods) {
+    setPeriods(data.periods);
+  }
+
+  const selected = periodId ? periods.find((p) => p.id === periodId) : undefined;
+  const isCurrent = periodId === null;
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setPeriodId(null);
+    onOpenChange(next);
+  };
 
   const months = useMemo(() => {
     const byMonth = new Map<string, Map<string, DayEntry>>();
@@ -40,18 +61,45 @@ export function HistorySheet({ open, onOpenChange, currency }: Props) {
     return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [data]);
 
+  const total = data?.total ?? 0;
   const totalDue = data?.totalDue ?? 0;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" className="mx-auto flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-t-2xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-1.5">
-            <CalendarDays className="size-4 text-muted-foreground" />
-            Current period
+            {isCurrent ? (
+              <CalendarDays className="size-4 text-muted-foreground" />
+            ) : (
+              <CalendarCheck2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+            )}
+            {isCurrent ? "Current period" : "Settled period"}
           </SheetTitle>
-          <SheetDescription>Your confirmed meals since the last settlement.</SheetDescription>
+          <SheetDescription>
+            {isCurrent
+              ? "Your confirmed meals since the last settlement."
+              : selected
+                ? `Meals from ${formatDate(selected.dateFrom)} to ${formatDate(selected.dateTo)}, settled on ${formatDate(selected.settledAt)}.`
+                : "Your meals in this settled period."}
+          </SheetDescription>
         </SheetHeader>
+
+        {periods.length > 0 && (
+          <div className="space-y-1.5 px-4">
+            <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Period</p>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+              <PeriodChip active={isCurrent} onClick={() => setPeriodId(null)}>
+                Current
+              </PeriodChip>
+              {periods.map((p) => (
+                <PeriodChip key={p.id} active={periodId === p.id} settled onClick={() => setPeriodId(p.id)}>
+                  {periodRange(p)}
+                </PeriodChip>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-3">
           {isLoading ? (
@@ -59,31 +107,70 @@ export function HistorySheet({ open, onOpenChange, currency }: Props) {
           ) : months.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center text-sm text-muted-foreground">
               <CalendarX2 className="size-7 text-muted-foreground/40" />
-              No confirmed meals yet this period.
+              {isCurrent ? "No confirmed meals yet this period." : "No meals in this period."}
+              {isCurrent && periods.length > 0 && (
+                <span className="text-xs">Pick a settled period above to see past meals.</span>
+              )}
             </div>
           ) : (
             months.map(([monthKey, days]) => <MonthGrid key={monthKey} monthKey={monthKey} days={days} currency={currency} />)
           )}
         </div>
 
-        <div
-          className={cn(
-            "mx-4 mb-4 flex items-center justify-between rounded-xl border px-4 py-3",
-            totalDue > 0 ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10",
-          )}
-        >
-          <span className="text-sm text-muted-foreground">Total due this period</span>
-          <span
+        {isCurrent ? (
+          <div
             className={cn(
-              "text-base font-semibold tabular-nums",
-              totalDue > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400",
+              "mx-4 mb-4 flex items-center justify-between rounded-xl border px-4 py-3",
+              totalDue > 0 ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10",
             )}
           >
-            {formatMoney(totalDue, currency)}
-          </span>
-        </div>
+            <span className="text-sm text-muted-foreground">Total due this period</span>
+            <span
+              className={cn(
+                "text-base font-semibold tabular-nums",
+                totalDue > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400",
+              )}
+            >
+              {formatMoney(totalDue, currency)}
+            </span>
+          </div>
+        ) : (
+          <div className="mx-4 mb-4 flex items-center justify-between rounded-xl border px-4 py-3">
+            <span className="text-sm text-muted-foreground">Your total for this period</span>
+            <span className="text-base font-semibold tabular-nums">{formatMoney(total, currency)}</span>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function PeriodChip({
+  active,
+  settled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  settled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-transparent text-muted-foreground hover:bg-muted",
+      )}
+    >
+      {settled && <CalendarCheck2 className="size-3" />}
+      {children}
+    </button>
   );
 }
 

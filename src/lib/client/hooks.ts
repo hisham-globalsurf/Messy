@@ -136,11 +136,26 @@ export interface MemberHistoryDay {
   sharedWith?: string;
 }
 
-export interface MemberHistory {
-  days: MemberHistoryDay[];
-  totalDue: number;
+/** A past settled period the member had meals in. */
+export interface MemberHistoryPeriod {
+  id: string;
+  dateFrom: string;
+  dateTo: string;
+  settledAt: string;
 }
 
-export function useMemberHistory(open: boolean) {
-  return useSWR<MemberHistory>(open ? "/api/member/history" : null, fetcher);
+export interface MemberHistory {
+  days: MemberHistoryDay[];
+  /** Sum of the member's shares in the selected period. */
+  total: number;
+  /** Part of `total` not yet marked paid. */
+  totalDue: number;
+  /** Past settled periods, newest first. */
+  periods: MemberHistoryPeriod[];
+}
+
+/** `periodId` null = the current (unsettled) period. */
+export function useMemberHistory(open: boolean, periodId: string | null = null) {
+  const key = periodId ? `/api/member/history?period=${encodeURIComponent(periodId)}` : "/api/member/history";
+  return useSWR<MemberHistory>(open ? key : null, fetcher);
 }
