@@ -8,6 +8,7 @@ import { mutate as globalMutate } from "swr";
 // server-only (wraps the raw API key), so this client file can't import from it directly.
 const REPORTS_BROADCAST_CHANNEL = "reports:broadcast";
 const QUEUE_BROADCAST_CHANNEL = "queue:broadcast";
+const DEVICES_BROADCAST_CHANNEL = "devices:broadcast";
 
 /**
  * Subscribes the admin app to the shared reports-broadcast and queue-broadcast channels, so a
@@ -23,6 +24,7 @@ export function useAdminRealtime(): void {
     const client = new Ably.Realtime({ authUrl: "/api/ably-token" });
     const reportsChannel = client.channels.get(REPORTS_BROADCAST_CHANNEL);
     const queueChannel = client.channels.get(QUEUE_BROADCAST_CHANNEL);
+    const devicesChannel = client.channels.get(DEVICES_BROADCAST_CHANNEL);
 
     function onReportCreated() {
       globalMutate("/api/reports");
@@ -30,16 +32,21 @@ export function useAdminRealtime(): void {
     function onQueueChanged() {
       globalMutate("/api/queue");
     }
+    function onDeviceRequestsChanged() {
+      globalMutate("/api/devices/requests");
+    }
 
     // Rejects if the channel/connection closes before attach completes — expected when the
     // effect's cleanup below runs quickly (React Strict Mode's dev double-invoke, or any fast
     // unmount), so it's not a real failure and must be caught to avoid an unhandled rejection.
     reportsChannel.subscribe("report-created", onReportCreated).catch(() => {});
     queueChannel.subscribe("queue-changed", onQueueChanged).catch(() => {});
+    devicesChannel.subscribe("device-requests-changed", onDeviceRequestsChanged).catch(() => {});
 
     return () => {
       reportsChannel.unsubscribe("report-created", onReportCreated);
       queueChannel.unsubscribe("queue-changed", onQueueChanged);
+      devicesChannel.unsubscribe("device-requests-changed", onDeviceRequestsChanged);
       client.close();
     };
   }, []);

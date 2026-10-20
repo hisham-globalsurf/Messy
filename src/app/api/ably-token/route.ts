@@ -1,8 +1,13 @@
 import { ok, route } from "@/lib/api";
-import { getAblyRestClient, QUEUE_BROADCAST_CHANNEL, REPORTS_BROADCAST_CHANNEL } from "@/lib/ably";
+import {
+  DEVICES_BROADCAST_CHANNEL,
+  getAblyRestClient,
+  QUEUE_BROADCAST_CHANNEL,
+  REPORTS_BROADCAST_CHANNEL,
+} from "@/lib/ably";
 
-/** Issues a short-lived Ably token scoped to subscribe-only on the shared reports-broadcast and
- * queue-broadcast channels — the raw ABLY_API_KEY never reaches the browser. Mirrors the
+/** Issues a short-lived Ably token scoped to subscribe-only on the shared reports-broadcast,
+ * queue-broadcast and devices-broadcast channels — the raw ABLY_API_KEY never reaches the browser. Mirrors the
  * member-facing token route in src/app/api/member/ably-token, just for the admin side. Ably's
  * SDK re-calls this (authUrl) to renew as needed. */
 export const GET = route(async (session) => {
@@ -11,6 +16,7 @@ export const GET = route(async (session) => {
     capability: {
       [REPORTS_BROADCAST_CHANNEL]: ["subscribe"],
       [QUEUE_BROADCAST_CHANNEL]: ["subscribe"],
+      [DEVICES_BROADCAST_CHANNEL]: ["subscribe"],
     },
   });
   return ok(tokenRequest);

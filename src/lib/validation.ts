@@ -137,6 +137,8 @@ export const settingsUpdateSchema = z
 
 export const memberLoginSchema = z.object({
   phone: z.string().trim().min(1, "Enter a phone number"),
+  /** Whether the page is running as an installed home-screen app — only labels the request. */
+  standalone: z.boolean().optional().default(false),
 });
 
 export const memberOrderSchema = z

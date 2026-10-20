@@ -57,12 +57,15 @@ export function useMemberRealtime(personId: string | null): void {
     memberChannel.subscribe("order-updated", onOrderUpdated).catch(() => {});
     memberChannel.subscribe("notifications-changed", onNotificationsChanged).catch(() => {});
     memberChannel.subscribe("blocked-changed", onBlockedChanged).catch(() => {});
+    // Admin logged a device out — same layout re-run; the revoked tab lands on the login page.
+    memberChannel.subscribe("session-revoked", onBlockedChanged).catch(() => {});
     broadcastChannel.subscribe("notifications-changed", onNotificationsChanged).catch(() => {});
 
     return () => {
       memberChannel.unsubscribe("order-updated", onOrderUpdated);
       memberChannel.unsubscribe("notifications-changed", onNotificationsChanged);
       memberChannel.unsubscribe("blocked-changed", onBlockedChanged);
+      memberChannel.unsubscribe("session-revoked", onBlockedChanged);
       broadcastChannel.unsubscribe("notifications-changed", onNotificationsChanged);
       client.close();
     };

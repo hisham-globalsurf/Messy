@@ -4,6 +4,7 @@ import useSWR from "swr";
 import { fetcher } from "./fetcher";
 import type {
   FoodVariant,
+  LoginRequestItem,
   MealEntry,
   MemberDateOrder,
   NotificationItem,
@@ -34,6 +35,12 @@ export function useSettings() {
 
 export function useReports() {
   return useSWR<ReportItem[]>("/api/reports", fetcher);
+}
+
+/** Pending member logins. Ably (useAdminRealtime) refreshes this the moment one arrives; the
+ * interval is only a fallback for when the realtime connection is down. */
+export function useLoginRequests() {
+  return useSWR<LoginRequestItem[]>("/api/devices/requests", fetcher, { refreshInterval: 30_000 });
 }
 
 export function useSettlements() {

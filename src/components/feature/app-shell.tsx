@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/feature/theme-toggle";
 import { SendNotificationDialog } from "@/components/feature/send-notification-dialog";
+import { LoginRequests } from "@/components/feature/login-requests";
 import { mutateApi } from "@/lib/client/fetcher";
 import { useSettings } from "@/lib/client/hooks";
 import { useAdminRealtime } from "@/lib/client/useAdminRealtime";
@@ -101,6 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-28 pt-5 sm:px-6 sm:pb-14 lg:max-w-4xl lg:px-8 lg:pt-8 2xl:max-w-5xl">
+        <LoginRequests />
         {children}
       </main>
 

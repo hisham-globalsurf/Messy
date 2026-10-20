@@ -117,6 +117,38 @@ export interface MemberSessionUser {
   name: string;
 }
 
+/** Where this browser's member login request stands — returned by /api/member/login/status. */
+export type LoginRequestStatus =
+  | { status: "none" }
+  | { status: "pending"; name: string; code: string }
+  | { status: "approved" }
+  | { status: "rejected" }
+  | { status: "expired" };
+
+/** A member login waiting for the admin, shown in the admin's login-requests banner. */
+export interface LoginRequestItem {
+  _id: string;
+  personName: string;
+  code: string;
+  label: string;
+  createdAt: string;
+}
+
+/** A browser a member is logged in on, listed under that member in People → Manage. */
+export interface MemberDeviceItem {
+  _id: string;
+  label: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+}
+
+/** The devices list for one member, plus whether they still have a session from before device
+ * approval existed (those can't be listed individually — only ended via "log out everywhere"). */
+export interface MemberDevicesResponse {
+  devices: MemberDeviceItem[];
+  legacySessionsActive: boolean;
+}
+
 /** A member's pending meal order in the live admin queue. */
 export interface QueueOrderItem {
   _id: string;

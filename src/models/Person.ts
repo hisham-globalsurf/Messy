@@ -7,6 +7,10 @@ const personSchema = new Schema(
     preferredVariant: { type: String, trim: true, default: "" },
     /** Blocked members can't log in or place orders — existing entries/history are unaffected. */
     blocked: { type: Boolean, default: false },
+    /** Set when the admin logs this member out of every device. Device-approved sessions are
+     * revoked by deleting their MemberDevice; this additionally ends sessions issued before device
+     * approval existed, which have no device record to delete. */
+    sessionsRevokedAt: { type: Date, default: null },
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );

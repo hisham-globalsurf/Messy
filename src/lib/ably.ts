@@ -31,6 +31,10 @@ export const REPORTS_BROADCAST_CHANNEL = "reports:broadcast";
  * refetches the queue on any change instead of polling /api/queue on an interval. */
 export const QUEUE_BROADCAST_CHANNEL = "queue:broadcast";
 
+/** Same shape again, for member login requests awaiting admin approval — every open admin tab
+ * refetches its pending-requests banner the moment one is created, decided or cancelled. */
+export const DEVICES_BROADCAST_CHANNEL = "devices:broadcast";
+
 /** Publishes one event with an empty payload, swallowing any failure — every `publish*` export
  * below is a thin wrapper around this. Best-effort: if Ably is unreachable or misconfigured, the
  * write that triggered the publish still succeeds — the affected tab(s) just fall back to SWR's
@@ -80,6 +84,18 @@ export function publishQueueChanged(): Promise<void> {
  * them, so the app swaps to/from BlockedScreen instantly instead of waiting for a manual refresh. */
 export function publishBlockedChanged(personId: string): Promise<void> {
   return publishBestEffort(memberChannelName(personId), "blocked-changed");
+}
+
+/** Tells every open admin tab to refetch pending member login requests. */
+export function publishDeviceRequestsChanged(): Promise<void> {
+  return publishBestEffort(DEVICES_BROADCAST_CHANNEL, "device-requests-changed");
+}
+
+/** Tells this member's open tab(s) to re-run the server layout — used when admin logs one or all
+ * of their devices out, so the logged-out tab drops to the login page instead of lingering until
+ * its next request fails. Other still-approved tabs just re-render unchanged. */
+export function publishSessionRevoked(personId: string): Promise<void> {
+  return publishBestEffort(memberChannelName(personId), "session-revoked");
 }
 
 export function getAblyRestClient(): Ably.Rest {

@@ -2,6 +2,7 @@ import { isValidObjectId } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { PersonModel } from "@/models/Person";
 import { PushSubscriptionModel } from "@/models/PushSubscription";
+import { MemberDeviceModel } from "@/models/MemberDevice";
 import { renamePersonInEntries } from "@/lib/persons";
 import { renamePersonInQueue } from "@/lib/queue";
 import { publishQueueChanged } from "@/lib/ably";
@@ -52,5 +53,6 @@ export const DELETE = route(async (_session, _request: Request, ctx: { params: P
 
   // Meal entries keep the name string — history stays intact. Their devices stop getting pushes.
   await PushSubscriptionModel.deleteMany({ personId: person._id });
+  await MemberDeviceModel.deleteMany({ personId: person._id });
   return ok({ ok: true });
 });

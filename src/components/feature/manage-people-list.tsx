@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Phone, Plus, Search, Trash2, Users, X } from "lucide-react";
+import { Check, ChevronRight, Phone, Plus, Search, Smartphone, Trash2, Users, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { mutateApi } from "@/lib/client/fetcher";
 import { mutate as globalMutate } from "swr";
 import { refreshEntries } from "@/lib/client/entries";
+import { MemberDevicesDialog } from "@/components/feature/member-devices-dialog";
 import { usePersons, useSettings, type PersonOption } from "@/lib/client/hooks";
 
 const NO_VARIANT = "__none__";
@@ -175,6 +176,7 @@ function PersonRow({
   const [busy, setBusy] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
 
   const dirty =
     (name.trim() !== person.name && name.trim().length > 0) ||
@@ -308,6 +310,17 @@ function PersonRow({
               />
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setDevicesOpen(true)}
+            className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted/50"
+          >
+            <span className="flex items-center gap-1.5">
+              <Smartphone className="size-3.5" />
+              Logged-in devices
+            </span>
+            <ChevronRight className="size-3.5" />
+          </button>
         </div>
 
         <div className="flex shrink-0 flex-col gap-1.5">
@@ -333,6 +346,13 @@ function PersonRow({
           </Button>
         </div>
       </div>
+
+      <MemberDevicesDialog
+        personId={person._id}
+        personName={person.name}
+        open={devicesOpen}
+        onOpenChange={setDevicesOpen}
+      />
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
