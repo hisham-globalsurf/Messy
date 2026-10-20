@@ -76,6 +76,9 @@ export default function MemberOrderPage() {
   const tomorrowLabel = `${tomorrowWord} — ${formatDate(orders.tomorrowDate)}`;
   const orderForTomorrowLabel = `Order for ${tomorrowIsLiteral ? "tomorrow" : tomorrowWord}`;
   const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime);
+  // A heads-up for the day before a closure, so members aren't left guessing why the next order
+  // button skips straight past tomorrow.
+  const tomorrowClosure = closureOn(tomorrowIst(), settings);
 
   function openTomorrowSheet() {
     setRevealTomorrow(true);
@@ -207,6 +210,15 @@ export default function MemberOrderPage() {
       )}
 
       {showTomorrow && !hasTomorrowOrder && <div className="hidden sm:block">{tomorrowContent}</div>}
+
+      {tomorrowClosure && (
+        <MessClosedNotice
+          from={tomorrowClosure.from}
+          to={tomorrowClosure.to}
+          message={tomorrowClosure.message}
+          dateLabel="Tomorrow"
+        />
+      )}
 
       {/* Phone only: a thumb-reachable fixed button (bottom-right, within easy thumb reach while
           holding the phone one-handed) that opens tomorrow's order card as a bottom drawer,
