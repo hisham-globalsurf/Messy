@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { BellRing, CheckCircle2, ChevronDown, MoreVertical } from "lucide-react";
+import { BellRing, CheckCheck, CheckCircle2, ChevronDown, MoreVertical, Trash2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -20,6 +20,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { ErrorState, ListSkeleton } from "@/components/feature/states";
 import { ShareCard } from "@/components/feature/share-card";
@@ -43,6 +49,8 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
   const [deleting, setDeleting] = useState<"unsettle" | "delete-entries" | null>(null);
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const { data: detail, error, isLoading, mutate } = useSettlementDetail(open ? settlement._id : null);
 
   const periodLabel = `${formatDate(settlement.dateFrom)} — ${formatDate(settlement.dateTo)}`;
@@ -74,6 +82,20 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
       toast.error(err instanceof Error ? err.message : "Could not send reminder");
     } finally {
       setNotifying(false);
+    }
+  }
+
+  async function onMarkAllPaid() {
+    setMarkingPaid(true);
+    try {
+      await mutateApi(`/api/settlements/${settlement._id}/paid`, "POST");
+      await Promise.all([refreshEntries(), mutate()]);
+      toast.success("All members marked as paid");
+      setMarkPaidOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not mark as paid");
+    } finally {
+      setMarkingPaid(false);
     }
   }
 
@@ -112,15 +134,30 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
             <BellRing className="size-4" />
           </Button>
         )}
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-9 shrink-0 text-muted-foreground"
-          onClick={() => setConfirming(true)}
-          aria-label="Settlement options"
-        >
-          <MoreVertical className="size-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-9 shrink-0 text-muted-foreground"
+              aria-label="Settlement options"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-auto">
+            {settlement.dueAmount > 0 && (
+              <DropdownMenuItem onClick={() => setMarkPaidOpen(true)}>
+                <CheckCheck />
+                Mark all as paid
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>
+              <Trash2 />
+              Delete settlement
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <CollapsibleContent className="border-t p-4">
@@ -166,6 +203,31 @@ export function SettlementRow({ settlement, currency, messName }: Props) {
             >
               {notifying && <Spinner />}
               Send reminder
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={markPaidOpen} onOpenChange={(v) => !markingPaid && setMarkPaidOpen(v)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark everyone as paid?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every member in {periodLabel} is marked as having paid their split, clearing the{" "}
+              {formatMoney(settlement.dueAmount, currency)} outstanding on this settlement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={markingPaid}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                onMarkAllPaid();
+              }}
+              disabled={markingPaid}
+            >
+              {markingPaid && <Spinner />}
+              Mark all as paid
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -264,8 +326,8 @@ function PersonBreakdownRow({
         <div className="flex flex-col items-end gap-1">
           <span className="text-sm font-semibold tabular-nums">{formatMoney(person.dueAmount, currency)}</span>
           {fullyPaid && (
-            <Badge className="border border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-              Paid
+            <Badge className="border border-emerald-500/30 bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-400">
+              Paid {formatMoney(person.paidAmount, currency)}
             </Badge>
           )}
           {partiallyPaid && (
