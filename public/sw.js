@@ -45,7 +45,9 @@ self.addEventListener("push", (event) => {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      data: { url: data.url || "/order" },
+      tag: data.tag,
+      actions: Array.isArray(data.actions) ? data.actions : [],
+      data: { url: data.url || "/order", actionUrl: data.actionUrl, title },
     }),
   );
 });
@@ -53,6 +55,40 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url || "/order";
+
+  // An action button (e.g. Approve/Reject on an admin login request) is decided right here,
+  // without opening the app. Same-origin fetch carries the admin session cookie. Anything that
+  // goes wrong — signed out on this device, request expired — opens the app instead, where the
+  // admin can see what happened.
+  const actionUrl = event.notification.data?.actionUrl;
+  if (event.action && actionUrl) {
+    event.waitUntil(
+      (async () => {
+        try {
+          const res = await fetch(actionUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: event.action }),
+          });
+          if (res.ok) {
+            await self.registration.showNotification(event.notification.data?.title || "Messy", {
+              body: `${event.action === "approve" ? "Approved" : "Rejected"} · ${event.notification.body}`,
+              icon: "/icons/icon-192.png",
+              badge: "/icons/icon-192.png",
+              tag: event.notification.tag || undefined,
+              silent: true,
+              data: { url },
+            });
+            return;
+          }
+        } catch {
+          // Offline — fall through to opening the app.
+        }
+        await self.clients.openWindow(new URL(url, self.location.origin).href);
+      })(),
+    );
+    return;
+  }
   const target = new URL(url, self.location.origin);
 
   // Outside links (the admin's supplier push opens a wa.me WhatsApp chat) go straight out —

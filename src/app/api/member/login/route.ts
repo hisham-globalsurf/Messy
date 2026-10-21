@@ -107,7 +107,17 @@ export async function POST(request: Request): Promise<Response> {
     await publishDeviceRequestsChanged();
     try {
       await sendPushToAdmins(
-        { title: "Login request", body: `${person.name} wants to log in on ${label} · code ${code}`, url: "/dashboard" },
+        {
+          title: "Login request",
+          body: `${person.name} wants to log in on ${label} · code ${code}`,
+          url: "/dashboard",
+          actions: [
+            { action: "approve", title: "Approve" },
+            { action: "reject", title: "Reject" },
+          ],
+          actionUrl: `/api/devices/${device._id.toString()}`,
+          tag: `login-request-${device._id.toString()}`,
+        },
         { ttlSeconds: LOGIN_REQUEST_TTL_MS / 1000 },
       );
     } catch (err) {

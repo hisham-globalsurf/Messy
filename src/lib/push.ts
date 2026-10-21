@@ -22,6 +22,12 @@ export interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  /** Buttons on the notification itself (Android/desktop Chrome; iOS ignores them and only the
+   * tap-to-open remains). Each action PATCHes `actionUrl` with `{ action }` from the service worker. */
+  actions?: { action: string; title: string }[];
+  actionUrl?: string;
+  /** Notifications sharing a tag replace each other — lets the action result take its place. */
+  tag?: string;
 }
 
 export interface PushOptions {
