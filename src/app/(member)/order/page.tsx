@@ -58,11 +58,9 @@ export default function MemberOrderPage() {
   }
 
   const todayClosure = closureOn(orders.todayDate, settings);
-  if (todayClosure) {
-    return <MessClosedNotice from={todayClosure.from} to={todayClosure.to} message={todayClosure.message} />;
-  }
-
-  const pastCutoff = isPastCutoffToday(settings.orderCutoffTime);
+  // With the mess closed today there's no today order to wait on, so the next open day's order
+  // opens up straight away rather than only after today's cutoff.
+  const pastCutoff = !!todayClosure || isPastCutoffToday(settings.orderCutoffTime);
   // Once there's a tomorrow order (placed, paired or confirmed), it becomes the main card on
   // every screen size and today's card steps aside — today's meal is already settled by then,
   // so tomorrow's is the one the member actually cares about.
@@ -77,8 +75,9 @@ export default function MemberOrderPage() {
   const orderForTomorrowLabel = `Order for ${tomorrowIsLiteral ? "tomorrow" : tomorrowWord}`;
   const todayStage = postCutoffOrderStage(settings.orderConfirmedUntilTime);
   // A heads-up for the day before a closure, so members aren't left guessing why the next order
-  // button skips straight past tomorrow.
-  const tomorrowClosure = closureOn(tomorrowIst(), settings);
+  // button skips straight past tomorrow. Skipped when today is closed too — the full-page notice
+  // already covers it.
+  const tomorrowClosure = todayClosure ? null : closureOn(tomorrowIst(), settings);
 
   function openTomorrowSheet() {
     setRevealTomorrow(true);
@@ -161,6 +160,15 @@ export default function MemberOrderPage() {
 
       {hasTomorrowOrder ? (
         tomorrowContent
+      ) : todayClosure ? (
+        <>
+          <MessClosedNotice from={todayClosure.from} to={todayClosure.to} message={todayClosure.message} />
+          {!showTomorrow && (
+            <div className="hidden justify-center sm:flex">
+              <Button onClick={() => setRevealTomorrow(true)}>{orderForTomorrowLabel}</Button>
+            </div>
+          )}
+        </>
       ) : orders.today.status === "confirmed" ? (
         <>
           <OrderConfirmedNotice order={orders.today.order} dateLabel="Today" stage={todayStage} />

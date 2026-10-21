@@ -17,7 +17,7 @@ export function MessClosedNotice({
 }) {
   const range = from && to && (
     <p className="text-sm text-muted-foreground">
-      {formatDate(from)} – {formatDate(to)}
+      {from === to ? formatDate(from) : `${formatDate(from)} – ${formatDate(to)}`}
     </p>
   );
 
